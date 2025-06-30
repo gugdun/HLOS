@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "efi.h": "c",
+        "paging.h": "c",
+        "string.h": "c",
+        "stdint.h": "c",
+        "idt.h": "c",
+        "stddef.h": "c",
+        "gdt.h": "c",
+        "interrupts.h": "c",
+        "ports.h": "c",
+        "serial.h": "c"
+    }
+}

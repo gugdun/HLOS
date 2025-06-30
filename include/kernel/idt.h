@@ -1,0 +1,26 @@
+#ifndef _IDT_H
+#define _IDT_H
+
+#include <stdint.h>
+
+#define IDT_ENTRIES 256
+
+struct __attribute__((packed)) IDTEntry {
+    uint16_t offset_low;
+    uint16_t selector;
+    uint8_t  ist;
+    uint8_t  type_attr;
+    uint16_t offset_mid;
+    uint32_t offset_high;
+    uint32_t zero;
+};
+
+struct __attribute__((packed)) IDTPtr {
+    uint16_t limit;
+    uint64_t base;
+};
+
+void set_idt_entry(int vector, void (*isr)(), uint8_t ist);
+void setup_idt();
+
+#endif
