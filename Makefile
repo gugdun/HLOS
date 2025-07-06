@@ -10,7 +10,7 @@ LD		:= $(ARCH)-w64-mingw32-gcc
 
 INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
 LIBRARY := -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
-CFLAGS  := -Wall -Wextra -O0 -ffreestanding $(INCLUDE)
+CFLAGS  := -Wall -Wextra -O0 -ffreestanding -mno-red-zone $(INCLUDE)
 LDFLAGS := -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main $(LIBRARY)
 
 BOOT_SRC	:= $(wildcard boot/*.c)
@@ -36,6 +36,10 @@ obj/gnu-efi/lib/data.o:
 obj/boot/%.o: boot/%.c
 	mkdir -p obj/boot
 	$(CC) $(CFLAGS) -c $< -o $@
+
+obj/kernel/idt.o: kernel/idt.c
+	mkdir -p obj/kernel
+	$(CC) $(CFLAGS) -mgeneral-regs-only -c $< -o $@
 
 obj/kernel/%.o: kernel/%.c
 	mkdir -p obj/kernel

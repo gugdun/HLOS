@@ -1,5 +1,6 @@
 #include <kernel/io/serial.h>
 #include <kernel/io/ports.h>
+#include <kernel/io/print.h>
 
 void serial_init(void) {
     outb(COM1_PORT + 1, 0x00); // Disable interrupts
@@ -9,6 +10,7 @@ void serial_init(void) {
     outb(COM1_PORT + 3, 0x03); // 8 bits, no parity, one stop bit
     outb(COM1_PORT + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
     outb(COM1_PORT + 4, 0x0B); // IRQs enabled, RTS/DSR set
+    kprint("[Serial] Initialized!\n");
 }
 
 int serial_is_transmit_ready() {

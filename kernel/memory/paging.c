@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <kernel/io/print.h>
 
 #define PAGE_PRESENT 0x1
 #define PAGE_RW      0x2
@@ -8,7 +9,7 @@ __attribute__((aligned(0x1000))) static uint64_t pml4[512];
 __attribute__((aligned(0x1000))) static uint64_t pdpt[512];
 __attribute__((aligned(0x1000))) static uint64_t pd[512];
 
-void paging_init(void) {
+void setup_paging(void) {
     for (int i = 0; i < 512; ++i) {
         pd[i] = (i * 0x200000) | PAGE_PRESENT | PAGE_RW | (1 << 7); // 2MB pages
     }
@@ -32,4 +33,6 @@ void paging_init(void) {
         : "r"(pml4_phys), "r"(cr4_pae), "r"(cr0_pg)
         : "rax"
     );
+
+    kprint("[Paging] Initialized!\n");
 }

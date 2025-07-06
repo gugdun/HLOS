@@ -5,12 +5,14 @@
 __attribute__((aligned(16))) struct IDTEntry idt[IDT_ENTRIES];
 struct IDTPtr idt_ptr;
 
-__attribute__((naked)) void isr_divide_by_zero(struct interrupt_frame* frame) {
-    while (1) __asm__ volatile ("cli; hlt");
+__attribute__((interrupt)) void isr_divide_by_zero(struct interrupt_frame* frame) {
+    kprint("[Exception] Division by zero!\n");
+    while (1) asm volatile ("cli; hlt");
 }
 
-__attribute__((naked)) void isr_dummy(struct interrupt_frame* frame) {
-    while (1) __asm__ volatile ("cli; hlt");
+__attribute__((interrupt)) void isr_dummy(struct interrupt_frame* frame) {
+    kprint("[Exception] Dummy handler\n");
+    while (1) asm volatile ("cli; hlt");
 }
 
 void set_idt_entry(int vector, void (*isr)(), uint8_t ist) {

@@ -10,6 +10,8 @@
         "interrupts.h": "c",
         "ports.h": "c",
         "serial.h": "c",
-        "tss.h": "c"
+        "tss.h": "c",
+        "isr.h": "c",
+        "print.h": "c"
     }
 }
