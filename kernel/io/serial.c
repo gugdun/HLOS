@@ -1,4 +1,5 @@
 #include <kernel/io/serial.h>
+#include <kernel/io/ports.h>
 
 void serial_init(void) {
     outb(COM1_PORT + 1, 0x00); // Disable interrupts

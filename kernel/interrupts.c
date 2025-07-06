@@ -1,3 +1,5 @@
+#include <kernel/io/print.h>
+
 void disable_interrupts()
 {
     asm volatile ("cli");

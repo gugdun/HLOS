@@ -1,16 +1,15 @@
 #include <kernel/idt.h>
 #include <kernel/isr.h>
+#include <kernel/io/print.h>
 
 __attribute__((aligned(16))) struct IDTEntry idt[IDT_ENTRIES];
 struct IDTPtr idt_ptr;
 
 __attribute__((naked)) void isr_divide_by_zero(struct interrupt_frame* frame) {
-    (void *)frame;
     while (1) __asm__ volatile ("cli; hlt");
 }
 
 __attribute__((naked)) void isr_dummy(struct interrupt_frame* frame) {
-    (void *)frame;
     while (1) __asm__ volatile ("cli; hlt");
 }
 

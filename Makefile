@@ -15,7 +15,7 @@ LDFLAGS := -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main $(LIBRARY)
 
 BOOT_SRC	:= $(wildcard boot/*.c)
 BOOT_OBJ	:= $(patsubst boot/%.c, obj/boot/%.o, $(BOOT_SRC))
-KERNEL_SRC	:= $(wildcard kernel/*.c kernel/memory/*.c kernel/io/*.c)
+KERNEL_SRC	:= $(wildcard kernel/*.c kernel/memory/*.c kernel/io/*.c kernel/graphics/*.c)
 KERNEL_OBJ	:= $(patsubst kernel/%.c, obj/kernel/%.o, $(KERNEL_SRC))
 LIB_SRC		:= $(wildcard lib/*.c)
 LIB_OBJ		:= $(patsubst lib/%.c, obj/lib/%.o, $(LIB_SRC))
@@ -40,6 +40,7 @@ obj/boot/%.o: boot/%.c
 obj/kernel/%.o: kernel/%.c
 	mkdir -p obj/kernel
 	mkdir -p obj/kernel/memory
+	mkdir -p obj/kernel/graphics
 	mkdir -p obj/kernel/io
 	$(CC) $(CFLAGS) -c $< -o $@
 

@@ -9,6 +9,7 @@
         "gdt.h": "c",
         "interrupts.h": "c",
         "ports.h": "c",
-        "serial.h": "c"
+        "serial.h": "c",
+        "tss.h": "c"
     }
 }

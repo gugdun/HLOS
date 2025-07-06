@@ -1,5 +1,6 @@
 #include <kernel/gdt.h>
 #include <kernel/tss.h>
+#include <kernel/io/print.h>
 
 __attribute__((aligned(16))) struct GDTEntry gdt[GDT_ENTRIES];
 __attribute__((aligned(16))) struct TSSDescriptorHigh tss_high;
