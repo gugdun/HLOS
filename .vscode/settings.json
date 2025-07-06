@@ -12,6 +12,7 @@
         "serial.h": "c",
         "tss.h": "c",
         "isr.h": "c",
-        "print.h": "c"
+        "print.h": "c",
+        "framebuffer.h": "c"
     }
 }

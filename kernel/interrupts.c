@@ -2,12 +2,12 @@
 
 void disable_interrupts()
 {
-    asm volatile ("cli");
-    kprint("[Interrupts] Disabled\n");
+    __asm__ volatile ("cli");
+    kprintf("[Interrupts] Disabled\n");
 }
 
 void enable_interrupts()
 {
-    asm volatile ("sti");
-    kprint("[Interrupts] Enabled\n");
+    __asm__ volatile ("sti");
+    kprintf("[Interrupts] Enabled\n");
 }

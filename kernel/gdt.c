@@ -15,7 +15,7 @@ void setup_tss() {
     tss.rsp0 = (uint64_t)(ist_stack + sizeof(ist_stack));
     tss.ist[0] = (uint64_t)(df_stack + sizeof(df_stack)); // IST1 = double fault
     tss.iopb_offset = sizeof(struct TSS);
-    kprint("[TSS] Initialized!\n");
+    kprintf("[TSS] Base: 0x%x\n", (uint64_t)&tss);
 }
 
 void setup_gdt() {
@@ -59,10 +59,10 @@ void setup_gdt() {
     gdt_ptr.limit = sizeof(gdt) - 1;
     gdt_ptr.base = (uint64_t)&gdt;
 
-    asm volatile ("lgdt %0" : : "m"(gdt_ptr));
+    __asm__ volatile ("lgdt %0" : : "m"(gdt_ptr));
 
     // Reload segments
-    asm volatile (
+    __asm__ volatile (
         "mov $0x10, %%ax\n"
         "mov %%ax, %%ds\n"
         "mov %%ax, %%ss\n"
@@ -77,6 +77,7 @@ void setup_gdt() {
         ::: "rax", "memory"
     );
 
-    asm volatile ("ltr %w0" : : "r"((uint16_t)0x18));
-    kprint("[GDT] Initialized!\n");
+    __asm__ volatile ("ltr %w0" : : "r"((uint16_t)0x18));
+
+    kprintf("[GDT] Base: 0x%x\n", (uint64_t)&gdt);
 }

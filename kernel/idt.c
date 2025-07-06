@@ -6,13 +6,13 @@ __attribute__((aligned(16))) struct IDTEntry idt[IDT_ENTRIES];
 struct IDTPtr idt_ptr;
 
 __attribute__((interrupt)) void isr_divide_by_zero(struct interrupt_frame* frame) {
-    kprint("[Exception] Division by zero!\n");
-    while (1) asm volatile ("cli; hlt");
+    kprintf("[Exception] Division by zero!\n  RIP   0x%x\n  CS    0x%x\n  FLAGS 0x%x\n  RSP   0x%x\n  SS    0x%x\n");
+    while (1) __asm__ volatile ("cli; hlt");
 }
 
 __attribute__((interrupt)) void isr_dummy(struct interrupt_frame* frame) {
-    kprint("[Exception] Dummy handler\n");
-    while (1) asm volatile ("cli; hlt");
+    kprintf("[Exception] Unknown exception!\n  RIP   0x%x\n  CS    0x%x\n  FLAGS 0x%x\n  RSP   0x%x\n  SS    0x%x\n");
+    while (1) __asm__ volatile ("cli; hlt");
 }
 
 void set_idt_entry(int vector, void (*isr)(), uint8_t ist) {
@@ -36,6 +36,7 @@ void setup_idt() {
     idt_ptr.limit = sizeof(idt) - 1;
     idt_ptr.base = (uint64_t)&idt;
 
-    asm volatile ("lidt %0" : : "m"(idt_ptr));
-    kprint("[IDT] Initialized!\n");
+    __asm__ volatile ("lidt %0" : : "m"(idt_ptr));
+
+    kprintf("[IDT] Base: 0x%x\n", (uint64_t)&idt);
 }
