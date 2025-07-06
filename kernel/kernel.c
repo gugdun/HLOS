@@ -1,3 +1,4 @@
+#include <kernel/fpu.h>
 #include <kernel/gdt.h>
 #include <kernel/idt.h>
 #include <kernel/interrupts.h>
@@ -8,6 +9,7 @@
 
 void kernel_main(uint64_t fb_base, uint64_t fb_size, uint32_t fb_width, uint32_t fb_height) {
     serial_init();
+    enable_fpu_sse();
     fb_init(fb_base, fb_size, fb_width, fb_height);
     disable_interrupts();
     setup_tss();
@@ -15,5 +17,5 @@ void kernel_main(uint64_t fb_base, uint64_t fb_size, uint32_t fb_width, uint32_t
     setup_idt();
     setup_paging();
     enable_interrupts();
-    while (1) {}
+    while (1) __asm__ volatile ("hlt");
 }
