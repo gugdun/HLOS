@@ -4,13 +4,17 @@ EFI_LIB := $(GNU_EFI)/lib
 OVMF    := /usr/share/OVMF
 PFLASH	:= $(OVMF)/OVMF_CODE_4M.fd
 
+CPU		:= EPYC
+CORES	:= 4
+MEMORY	:= 8192
+
 ARCH    := x86_64
 CC      := $(ARCH)-w64-mingw32-gcc
 LD		:= $(ARCH)-w64-mingw32-gcc
 
 INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
 LIBRARY := -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
-CFLAGS  := -Wall -Wextra -O0 -ffreestanding -mno-red-zone $(INCLUDE)
+CFLAGS  := -Wall -Wextra -O0 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone $(INCLUDE)
 LDFLAGS := -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main $(LIBRARY)
 
 BOOT_SRC	:= $(wildcard boot/*.c)
@@ -60,7 +64,12 @@ usb: $(EFI_OUTPUT)
 	mcopy -i out/usb.img $(EFI_OUTPUT) ::/EFI/BOOT
 
 qemu: usb
-	qemu-system-$(ARCH) -L $(OVMF) -pflash $(PFLASH) -serial stdio -usb -drive if=none,id=usbstick,format=raw,file=out/usb.img -device usb-ehci,id=ehci -device usb-storage,bus=ehci.0,drive=usbstick
+	qemu-system-$(ARCH) -L $(OVMF) -pflash $(PFLASH) \
+		-cpu $(CPU) -enable-kvm -smp $(CORES) -m $(MEMORY) \
+		-serial stdio \
+		-usb -drive if=none,id=usbstick,format=raw,file=out/usb.img \
+		-device usb-ehci,id=ehci \
+		-device usb-storage,bus=ehci.0,drive=usbstick
 
 clean:
 	rm -rf obj/* out/*
