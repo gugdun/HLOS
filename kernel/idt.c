@@ -6,12 +6,18 @@ __attribute__((aligned(16))) struct IDTEntry idt[IDT_ENTRIES];
 struct IDTPtr idt_ptr;
 
 __attribute__((interrupt)) void isr_divide_by_zero(struct interrupt_frame* frame) {
-    kprintf("[Exception] Division by zero!\n  RIP   0x%x\n  CS    0x%x\n  FLAGS 0x%x\n  RSP   0x%x\n  SS    0x%x\n");
+    kprintf(
+        "[Exception] Division by zero!\n  RIP   0x%x\n  CS    0x%x\n  FLAGS 0x%x\n  RSP   0x%x\n  SS    0x%x\n",
+        frame->rip, frame->cs, frame->flags, frame->rsp, frame->ss
+    );
     while (1) __asm__ volatile ("cli; hlt");
 }
 
 __attribute__((interrupt)) void isr_dummy(struct interrupt_frame* frame) {
-    kprintf("[Exception] Unknown exception!\n  RIP   0x%x\n  CS    0x%x\n  FLAGS 0x%x\n  RSP   0x%x\n  SS    0x%x\n");
+    kprintf(
+        "[Exception] Unknown exception!\n  RIP   0x%x\n  CS    0x%x\n  FLAGS 0x%x\n  RSP   0x%x\n  SS    0x%x\n",
+        frame->rip, frame->cs, frame->flags, frame->rsp, frame->ss
+    );
     while (1) __asm__ volatile ("cli; hlt");
 }
 

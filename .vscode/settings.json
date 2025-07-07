@@ -13,6 +13,7 @@
         "tss.h": "c",
         "isr.h": "c",
         "print.h": "c",
-        "framebuffer.h": "c"
+        "framebuffer.h": "c",
+        "mem_entry.h": "c"
     }
 }
