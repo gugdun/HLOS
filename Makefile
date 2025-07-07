@@ -30,41 +30,51 @@ EFI_OUTPUT	:= out/BOOTX64.EFI
 all: $(EFI_OUTPUT)
 
 $(EFI_OUTPUT): obj/gnu-efi/lib/data.o $(OBJECTS)
-	mkdir -p out
-	$(LD) $(LDFLAGS) -o out/BOOTX64.EFI $(OBJECTS) obj/gnu-efi/lib/data.o
+	@mkdir -p out
+	@echo "Linking $(EFI_OUTPUT)..."
+	@$(LD) $(LDFLAGS) -o $(EFI_OUTPUT) $(OBJECTS) obj/gnu-efi/lib/data.o
+	@echo "Done!"
 
-obj/gnu-efi/lib/data.o:
-	mkdir -p obj/gnu-efi/lib
-	$(CC) $(CFLAGS) -c $(EFI_LIB)/data.c -o $@
+obj/gnu-efi/lib/data.o: $(EFI_LIB)/data.c
+	@mkdir -p obj/gnu-efi/lib
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 obj/boot/%.o: boot/%.c
-	mkdir -p obj/boot
-	$(CC) $(CFLAGS) -c $< -o $@
+	@mkdir -p obj/boot
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 obj/kernel/idt.o: kernel/idt.c
-	mkdir -p obj/kernel
-	$(CC) $(CFLAGS) -mgeneral-regs-only -c $< -o $@
+	@mkdir -p obj/kernel
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) -mgeneral-regs-only -c $< -o $@
 
 obj/kernel/%.o: kernel/%.c
-	mkdir -p obj/kernel
-	mkdir -p obj/kernel/memory
-	mkdir -p obj/kernel/graphics
-	mkdir -p obj/kernel/io
-	$(CC) $(CFLAGS) -c $< -o $@
+	@mkdir -p obj/kernel
+	@mkdir -p obj/kernel/memory
+	@mkdir -p obj/kernel/graphics
+	@mkdir -p obj/kernel/io
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 obj/lib/%.o: lib/%.c
-	mkdir -p obj/lib
-	$(CC) $(CFLAGS) -c $< -o $@
+	@mkdir -p obj/lib
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 usb: $(EFI_OUTPUT)
-	dd if=/dev/zero of=out/usb.img bs=1k count=1440
-	mformat -i out/usb.img -f 1440 ::
-	mmd -i out/usb.img ::/EFI
-	mmd -i out/usb.img ::/EFI/BOOT
-	mcopy -i out/usb.img $(EFI_OUTPUT) ::/EFI/BOOT
+	@echo "Building USB image..."
+	@dd if=/dev/zero of=out/usb.img bs=1k count=1440
+	@mformat -i out/usb.img -f 1440 ::
+	@mmd -i out/usb.img ::/EFI
+	@mmd -i out/usb.img ::/EFI/BOOT
+	@mcopy -i out/usb.img $(EFI_OUTPUT) ::/EFI/BOOT
+	@echo "Done!"
 
 qemu: usb
-	qemu-system-$(ARCH) -L $(OVMF) -pflash $(PFLASH) \
+	@echo "Starting QEMU..."
+	@qemu-system-$(ARCH) -L $(OVMF) -pflash $(PFLASH) \
 		-cpu $(CPU) -enable-kvm -smp $(CORES) -m $(MEMORY) \
 		-serial stdio \
 		-usb -drive if=none,id=usbstick,format=raw,file=out/usb.img \
@@ -72,6 +82,8 @@ qemu: usb
 		-device usb-storage,bus=ehci.0,drive=usbstick
 
 clean:
-	rm -rf obj/* out/*
+	@echo "Cleaning..."
+	@rm -rf obj out
+	@echo "Done!"
 
 .PHONY: all clean
