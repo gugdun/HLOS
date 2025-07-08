@@ -19,5 +19,5 @@ void enable_fpu_sse(void) {
     // Initialize the FPU
     __asm__ volatile ("fninit");
 
-    kprintf("[FPU] Initialized! Test: %f\n", 0.123456);
+    kprintf("[FPU] Test: %f\n", 0.123123);
 }

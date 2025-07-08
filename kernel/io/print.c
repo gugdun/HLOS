@@ -16,7 +16,7 @@ void print_str(const char* s)
 void print_uint(unsigned long long num, int base)
 {
     char buffer[32];
-    const char* digits = "0123456789abcdef";
+    const char* digits = "0123456789ABCDEF";
     int i = 0;
 
     if (num == 0) {
@@ -76,13 +76,13 @@ void kprintf(const char* fmt, ...)
         switch (*fmt) {
             case 'd':
             case 'i':
-                print_int(va_arg(args, int));
+                print_int(va_arg(args, long long));
                 break;
             case 'u':
-                print_uint(va_arg(args, unsigned int), 10);
+                print_uint(va_arg(args, unsigned long long), 10);
                 break;
             case 'x':
-                print_uint(va_arg(args, unsigned int), 16);
+                print_uint(va_arg(args, unsigned long long), 16);
                 break;
             case 'f':
                 print_float(va_arg(args, double), 6);
