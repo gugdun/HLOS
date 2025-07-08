@@ -1,11 +1,13 @@
-#include <kernel/fpu.h>
-#include <kernel/gdt.h>
-#include <kernel/idt.h>
-#include <kernel/interrupts.h>
+#include <kernel/cpu/fpu.h>
+#include <kernel/cpu/gdt.h>
+#include <kernel/interrupts/idt.h>
+#include <kernel/interrupts/interrupts.h>
 #include <kernel/io/serial.h>
 #include <kernel/io/print.h>
 #include <kernel/memory/paging.h>
 #include <kernel/graphics/framebuffer.h>
+#include <kernel/timer/pit.h>
+#include <kernel/interrupts/pic.h>
 
 void kernel_main(
     struct MemoryMapEntry *memory_map,
@@ -26,6 +28,8 @@ void kernel_main(
     setup_gdt();
     setup_idt();
     setup_paging(memory_map, memory_map_size, descriptor_size, fb_base, fb_size);
+    remap_pic();
+    setup_pit(100);
     enable_interrupts();
     while (1) __asm__ volatile ("hlt");
 }

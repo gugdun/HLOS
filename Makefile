@@ -14,12 +14,12 @@ LD		:= $(ARCH)-w64-mingw32-gcc
 
 INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
 LIBRARY := -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
-CFLAGS  := -Wall -Wextra -O0 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone $(INCLUDE)
+CFLAGS  := -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone $(INCLUDE)
 LDFLAGS := -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main $(LIBRARY)
 
 BOOT_SRC	:= $(wildcard boot/*.c)
 BOOT_OBJ	:= $(patsubst boot/%.c, obj/boot/%.o, $(BOOT_SRC))
-KERNEL_SRC	:= $(wildcard kernel/*.c kernel/memory/*.c kernel/io/*.c kernel/graphics/*.c)
+KERNEL_SRC	:= $(wildcard kernel/*.c kernel/cpu/*.c kernel/memory/*.c kernel/io/*.c kernel/graphics/*.c kernel/interrupts/*.c kernel/timer/*.c)
 KERNEL_OBJ	:= $(patsubst kernel/%.c, obj/kernel/%.o, $(KERNEL_SRC))
 LIB_SRC		:= $(wildcard lib/*.c)
 LIB_OBJ		:= $(patsubst lib/%.c, obj/lib/%.o, $(LIB_SRC))
@@ -45,16 +45,19 @@ obj/boot/%.o: boot/%.c
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-obj/kernel/idt.o: kernel/idt.c
+obj/kernel/interrupts/idt.o: kernel/interrupts/idt.c
 	@mkdir -p obj/kernel
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -mgeneral-regs-only -c $< -o $@
 
 obj/kernel/%.o: kernel/%.c
 	@mkdir -p obj/kernel
+	@mkdir -p obj/kernel/cpu
 	@mkdir -p obj/kernel/memory
 	@mkdir -p obj/kernel/graphics
 	@mkdir -p obj/kernel/io
+	@mkdir -p obj/kernel/timer
+	@mkdir -p obj/kernel/interrupts
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
