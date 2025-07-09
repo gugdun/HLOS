@@ -16,7 +16,7 @@ uint64_t next_virtual_heap_addr = VIRT_HEAP_BASE;
 static void map_identity(struct MemoryMapEntry *entry)
 {
     uint64_t start = entry->physical_start - (entry->physical_start % PAGE_SIZE_2MB);
-    uint64_t pages = (entry->size_pages / (uint64_t)(PAGE_SIZE_2MB / PAGE_SIZE_4KB)) + 1;
+    size_t   pages = (entry->size_pages / (uint64_t)(PAGE_SIZE_2MB / PAGE_SIZE_4KB)) + 1;
 
     for (uint64_t i = 0; i < pages; ++i) {
         uint64_t addr = start + i * PAGE_SIZE_2MB;
@@ -27,7 +27,9 @@ static void map_identity(struct MemoryMapEntry *entry)
         pdpt[pdpt_index] = ((uint64_t)pds[pdpt_index]) | PAGE_PRESENT | PAGE_RW;
     }
 
+#ifdef HLOS_DEBUG
     kprintf("[Paging] Identity mapped %u pages at 0x%x (type %d)\n", pages, start, entry->type);
+#endif
 }
 
 static void map_virtual(struct MemoryMapEntry *entry)
@@ -35,11 +37,11 @@ static void map_virtual(struct MemoryMapEntry *entry)
     // 2 MiB alignment
     uint64_t addr_mod = entry->physical_start % PAGE_SIZE_2MB;
     uint64_t phys_start = entry->physical_start - addr_mod + PAGE_SIZE_2MB;
-    uint64_t size_bytes = entry->size_pages * PAGE_SIZE_4KB + addr_mod - PAGE_SIZE_2MB;
-    uint64_t aligned_size = size_bytes - (size_bytes % PAGE_SIZE_2MB);
+    size_t   size_bytes = entry->size_pages * PAGE_SIZE_4KB + addr_mod - PAGE_SIZE_2MB;
+    size_t   aligned_size = size_bytes - (size_bytes % PAGE_SIZE_2MB);
     uint64_t virt_start = next_virtual_heap_addr;
 
-    for (uint64_t offset = 0; offset < aligned_size; offset += PAGE_SIZE_2MB) {
+    for (size_t offset = 0; offset < aligned_size; offset += PAGE_SIZE_2MB) {
         uint64_t phys = phys_start + offset;
         uint64_t virt = virt_start + offset;
         uint64_t pml4_index = (virt >> 39) & 0x1FF;
@@ -57,19 +59,22 @@ static void map_virtual(struct MemoryMapEntry *entry)
         pds[pml4_index][pd_index] = phys | PAGE_PRESENT | PAGE_RW | PAGE_PS;
     }
 
+#ifdef HLOS_DEBUG
     kprintf("[Paging] Mapped %u bytes at virt 0x%x -> phys 0x%x\n", aligned_size, virt_start, phys_start);
+#endif
+
     next_virtual_heap_addr += aligned_size;
 }
 
-void setup_paging(struct MemoryMapEntry *memory_map, uint64_t memory_map_size, uint64_t descriptor_size, uint64_t fb_base, uint64_t fb_size)
+void setup_paging(struct MemoryMapEntry *memory_map, size_t memory_map_size, size_t descriptor_size, uint64_t fb_base, size_t fb_size)
 {
     // Identity map framebuffer
-    uint64_t fb_pages = (fb_size / (uint64_t)PAGE_SIZE_4KB) + 1;
-    struct MemoryMapEntry fb_entry = { 0, 0, fb_base, fb_base, fb_pages, 0 };
+    size_t fb_pages = (fb_size / (uint64_t)PAGE_SIZE_4KB) + 1;
+    struct MemoryMapEntry fb_entry = { 0, 0, fb_base, fb_base, (uint64_t)fb_pages, 0 };
     map_identity(&fb_entry);
 
     // Identity map entries
-    for (uint64_t i = 0; i < memory_map_size; i += descriptor_size) {
+    for (size_t i = 0; i < memory_map_size; i += descriptor_size) {
         struct MemoryMapEntry *entry = (struct MemoryMapEntry *)((uint8_t *)memory_map + i);
         switch (entry->type) {
             case KernelCode:
@@ -117,4 +122,6 @@ void setup_paging(struct MemoryMapEntry *memory_map, uint64_t memory_map_size, u
         : "r"(pml4_phys), "r"(cr4_pae), "r"(cr0_pg)
         : "rax"
     );
+
+    kprintf("[Paging] Initialized!\n");
 }

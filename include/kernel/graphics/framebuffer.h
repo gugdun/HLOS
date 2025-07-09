@@ -2,6 +2,7 @@
 #define _FRAMEBUFFER_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define CLEAR_COLOR 0x101010FF
 
@@ -17,6 +18,6 @@ struct FramebufferPixelBitmask {
   uint32_t b;
 };
 
-void fb_init(uint64_t base, uint64_t size, uint32_t width, uint32_t height, FramebufferPixelFormat format, struct FramebufferPixelBitmask bitmask);
+void fb_init(uint64_t base, size_t size, uint32_t width, uint32_t height, FramebufferPixelFormat format, struct FramebufferPixelBitmask bitmask);
 
 #endif

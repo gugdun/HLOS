@@ -12,10 +12,10 @@
 
 void kernel_main(
     struct MemoryMapEntry *memory_map,
-    uint64_t memory_map_size,
-    uint64_t descriptor_size,
+    size_t memory_map_size,
+    size_t descriptor_size,
     uint64_t fb_base,
-    uint64_t fb_size,
+    size_t fb_size,
     uint32_t fb_width,
     uint32_t fb_height,
     FramebufferPixelFormat fb_format,

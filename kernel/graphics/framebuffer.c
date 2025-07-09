@@ -3,13 +3,13 @@
 #include <string.h>
 
 uint64_t fb_base;
-uint64_t fb_size;
+size_t   fb_size;
 uint32_t fb_width;
 uint32_t fb_height;
 FramebufferPixelFormat fb_format;
 struct FramebufferPixelBitmask fb_bitmask;
 
-void fb_init(uint64_t base, uint64_t size, uint32_t width, uint32_t height, FramebufferPixelFormat format, struct FramebufferPixelBitmask bitmask)
+void fb_init(uint64_t base, size_t size, uint32_t width, uint32_t height, FramebufferPixelFormat format, struct FramebufferPixelBitmask bitmask)
 {
     fb_base = base;
     fb_size = size;

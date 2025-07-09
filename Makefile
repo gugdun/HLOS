@@ -12,9 +12,10 @@ ARCH    := x86_64
 CC      := $(ARCH)-w64-mingw32-gcc
 LD		:= $(ARCH)-w64-mingw32-gcc
 
+DEBUG	:= -DHLOS_DEBUG
 INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
 LIBRARY := -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
-CFLAGS  := -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone $(INCLUDE)
+CFLAGS  := $(DEBUG) -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone $(INCLUDE)
 LDFLAGS := -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main $(LIBRARY)
 
 BOOT_SRC	:= $(wildcard boot/*.c)
