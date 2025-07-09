@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <emmintrin.h>
 
-void* memset(void* dest, int value, size_t size)
+void *memset(void* dest, int value, size_t size)
 {
     uint8_t* ptr = (uint8_t*)dest;
     size_t i = 0;
@@ -26,4 +26,32 @@ void* memset(void* dest, int value, size_t size)
     }
 
     return dest;
+}
+
+void *memcpy(void *dst, const void *src, size_t n)
+{
+    uint8_t *d = (uint8_t *)dst;
+    const uint8_t *s = (const uint8_t *)src;
+
+    // Align to 16-byte boundaries
+    while (((uintptr_t)d % 16 != 0) && n) {
+        *d++ = *s++;
+        --n;
+    }
+
+    // Copy 16 bytes at a time using SSE
+    while (n >= 16) {
+        __m128i reg = _mm_loadu_si128((__m128i *)s);
+        _mm_storeu_si128((__m128i *)d, reg);
+        s += 16;
+        d += 16;
+        n -= 16;
+    }
+
+    // Copy any remaining bytes
+    while (n--) {
+        *d++ = *s++;
+    }
+
+    return dst;
 }
