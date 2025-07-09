@@ -2,8 +2,10 @@
 #include <kernel/io/print.h>
 #include <string.h>
 
-uint64_t fb_base, fb_size;
-uint32_t fb_width, fb_height;
+uint64_t fb_base;
+uint64_t fb_size;
+uint32_t fb_width;
+uint32_t fb_height;
 FramebufferPixelFormat fb_format;
 struct FramebufferPixelBitmask fb_bitmask;
 
