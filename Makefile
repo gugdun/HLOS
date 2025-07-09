@@ -45,7 +45,7 @@ obj/boot/%.o: boot/%.c
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-obj/kernel/interrupts/idt.o: kernel/interrupts/idt.c
+obj/kernel/interrupts/isrs.o: kernel/interrupts/isrs.c
 	@mkdir -p obj/kernel
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -mgeneral-regs-only -c $< -o $@
