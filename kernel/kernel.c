@@ -30,8 +30,20 @@ void kernel_main(
     setup_idt();
     setup_paging(memory_map, memory_map_size, descriptor_size, fb_base, fb_size);
     bitmap_init();
+
+    if (fb_size > 0) {
+        size_t fb_pages = fb_size / PAGE_SIZE_2MB;
+        void *fb_buffer = alloc_page();
+        for (size_t i = 0; i < fb_pages; ++i) {
+            alloc_page();
+        }
+        fb_init_buffer(fb_buffer);
+        fb_present();
+    }
+
     remap_pic();
     setup_pit(100);
     enable_interrupts();
+
     while (1) __asm__ volatile ("hlt");
 }
