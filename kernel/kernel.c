@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <lib/math.h>
 
 #include <kernel/io/serial.h>
 #include <kernel/io/print.h>
@@ -10,6 +11,7 @@
 #include <kernel/memory/bitmap.h>
 #include <kernel/memory/paging.h>
 #include <kernel/timer/pit.h>
+#include <kernel/timer/sleep.h>
 #include <kernel/graphics/framebuffer.h>
 
 void kernel_main(
@@ -56,8 +58,54 @@ void kernel_main(
     }
 
     remap_pic();
-    setup_pit(100);
+    setup_pit(1000);
     enable_interrupts();
 
-    while (1) __asm__ volatile ("hlt");
+    float angle = 0.0f;
+    const fb_color_t clear_color = fb_color_rgb(0.1f, 0.1f, 0.1f);
+    const fb_color_t triangle_color = fb_color_rgb(0.1f, 0.7f, 0.2f);
+
+    vector2 v1 = {0.0f, 0.5f};
+    vector2 v2 = {-0.5f, -0.5f};
+    vector2 v3 = {0.5f, -0.5f};
+
+    while (1) {
+        fb_clear(clear_color);
+
+        matrix2x2 rotation_matrix = {
+            .m = {
+                {cos(angle), -sin(angle)},
+                {sin(angle), cos(angle)}
+            }
+        };
+
+        vector2 rotated_v1 = matrix2x2_mul_vector2(rotation_matrix, v1);
+        vector2 rotated_v2 = matrix2x2_mul_vector2(rotation_matrix, v2);
+        vector2 rotated_v3 = matrix2x2_mul_vector2(rotation_matrix, v3);
+
+        float aspect = (float)fb_width / (float)fb_height;
+        rotated_v1.x /= aspect;
+        rotated_v2.x /= aspect;
+        rotated_v3.x /= aspect;
+
+        rotated_v1.x = (rotated_v1.x + 1.0f) * (fb_width / 2.0f);
+        rotated_v1.y = (rotated_v1.y + 1.0f) * (fb_height / 2.0f);
+        rotated_v2.x = (rotated_v2.x + 1.0f) * (fb_width / 2.0f);
+        rotated_v2.y = (rotated_v2.y + 1.0f) * (fb_height / 2.0f);
+        rotated_v3.x = (rotated_v3.x + 1.0f) * (fb_width / 2.0f);
+        rotated_v3.y = (rotated_v3.y + 1.0f) * (fb_height / 2.0f);
+
+        fb_triangle_fill(
+            triangle_color,
+            rotated_v1.x, rotated_v1.y,
+            rotated_v2.x, rotated_v2.y,
+            rotated_v3.x, rotated_v3.y
+        );
+
+        fb_present();
+        ksleep(16);
+
+        angle += 0.016f;
+        if (angle > 2.0f * M_PI) angle -= 2.0f * M_PI;
+    }
 }

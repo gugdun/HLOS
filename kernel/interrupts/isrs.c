@@ -32,15 +32,13 @@ __attribute__((interrupt)) void isr_double_fault(struct interrupt_frame* frame, 
 
 // ==== IRQ Handlers ====
 
+volatile uint64_t sleep_countdown = 0;
+
 __attribute__((interrupt)) void isr_timer(__attribute__((unused)) struct interrupt_frame* frame)
 {
-#ifdef HLOS_DEBUG
-    static uint64_t ticks = 0;
-    ticks++;
-    if (ticks % 100 == 0) {
-        kprintf("[Timer] Ticks: %u\n", ticks);
+    if (sleep_countdown > 0) {
+        sleep_countdown--;
     }
-#endif
     outb(0x20, 0x20); // EOI to PIC
 }
 
