@@ -1,6 +1,6 @@
 #include <kernel/timer/pit.h>
 #include <kernel/io/ports.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 
 #define PIT_FREQUENCY 1193182
 #define PIT_COMMAND_PORT 0x43
@@ -18,5 +18,5 @@ void setup_pit(uint32_t hz) {
 
     outb(0x21, inb(0x21) & ~1); // Unmask IRQ0 (timer)
 
-    kprintf("[PIT] Set frequency to %u Hz\n", hz);
+    tty_printf("[PIT] Set frequency to %u Hz\n", hz);
 }

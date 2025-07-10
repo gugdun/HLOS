@@ -1,6 +1,6 @@
 #include <kernel/cpu/gdt.h>
 #include <kernel/cpu/tss.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 
 extern struct TSS tss;
 
@@ -68,5 +68,5 @@ void setup_gdt() {
 
     __asm__ volatile ("ltr %w0" : : "r"((uint16_t)0x18));
 
-    kprintf("[GDT] Base: 0x%x\n", (uint64_t)&gdt);
+    tty_printf("[GDT] Base: 0x%x\n", (uint64_t)&gdt);
 }

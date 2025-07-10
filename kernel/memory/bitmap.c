@@ -1,6 +1,6 @@
 #include <kernel/memory/bitmap.h>
 #include <kernel/memory/paging.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 #include <string.h>
 
 extern uint64_t next_virtual_heap_addr;
@@ -12,7 +12,7 @@ void bitmap_init()
 {
     total_pages = (next_virtual_heap_addr - VIRT_HEAP_BASE) / PAGE_SIZE_2MB;
     memset((void *)page_bitmap, 0, MAX_PAGES / 8);
-    kprintf("[Bitmap] Total pages: %u\n", total_pages);
+    tty_printf("[Bitmap] Total pages: %u\n", total_pages);
 }
 
 void *alloc_page()
@@ -22,7 +22,7 @@ void *alloc_page()
             page_bitmap[i / 64] |= (1 << (i % 64)); // mark as used
             uint64_t addr = VIRT_HEAP_BASE + i * PAGE_SIZE_2MB;
 #ifdef HLOS_DEBUG
-            kprintf("[Bitmap] Allocated page @ 0x%x (page index %u)\n", addr, i);
+            tty_printf("[Bitmap] Allocated page @ 0x%x (page index %u)\n", addr, i);
 #endif
             return (void *)addr;
         }
@@ -35,6 +35,6 @@ void free_page(void *page)
     uint64_t page_index = ((uint64_t)page - VIRT_HEAP_BASE) / PAGE_SIZE_2MB;
     page_bitmap[page_index / 64] &= ~(1 << (page_index % 64)); // mark as free
 #ifdef HLOS_DEBUG
-    kprintf("[Bitmap] Freed page @ 0x%x (page index %u)\n", (uint64_t)page, page_index);
+    tty_printf("[Bitmap] Freed page @ 0x%x (page index %u)\n", (uint64_t)page, page_index);
 #endif
 }

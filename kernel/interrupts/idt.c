@@ -1,6 +1,6 @@
 #include <kernel/interrupts/idt.h>
 #include <kernel/interrupts/isrs.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 #include <kernel/io/ports.h>
 #include <kernel/timer/pit.h>
 
@@ -47,5 +47,5 @@ void setup_idt() {
     idt_ptr.base  = (uint64_t)&idt;
 
     __asm__ volatile ("lidt %0" : : "m"(idt_ptr));
-    kprintf("[IDT] Base: 0x%x\n", idt_ptr.base);
+    tty_printf("[IDT] Base: 0x%x\n", idt_ptr.base);
 }

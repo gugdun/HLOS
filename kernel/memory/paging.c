@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <kernel/memory/paging.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 
 #define PAGE_PRESENT  0x1
 #define PAGE_RW       0x2
@@ -30,10 +30,6 @@ static void map_identity(struct MemoryMapEntry *entry)
         pds_low[pdpt_index][pd_index] = addr | PAGE_PRESENT | PAGE_RW | PAGE_PS;
         pdpt_low[pdpt_index] = ((uint64_t)pds_low[pdpt_index]) | PAGE_PRESENT | PAGE_RW;
     }
-
-#ifdef HLOS_DEBUG
-    kprintf("[Paging] Identity mapped %u pages at 0x%x (type %d)\n", pages, start, entry->type);
-#endif
 }
 
 static void map_virtual(struct MemoryMapEntry *entry)
@@ -56,7 +52,7 @@ static void map_virtual(struct MemoryMapEntry *entry)
     }
 
 #ifdef HLOS_DEBUG
-    kprintf("[Paging] Mapped %u bytes at virt 0x%x -> phys 0x%x\n", aligned_size, virt_start, phys_start);
+    tty_printf("[Paging] Mapped %u bytes at virt 0x%x -> phys 0x%x\n", aligned_size, virt_start, phys_start);
 #endif
 
     next_virtual_heap_addr += aligned_size;
@@ -124,5 +120,5 @@ void setup_paging(struct MemoryMapEntry *memory_map, size_t memory_map_size, siz
         : "rax"
     );
 
-    kprintf("[Paging] Initialized!\n");
+    tty_printf("[Paging] Initialized!\n");
 }

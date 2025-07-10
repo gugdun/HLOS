@@ -1,6 +1,6 @@
 #include <kernel/interrupts/pic.h>
 #include <kernel/io/ports.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 
 void remap_pic() {
     uint8_t a1 = inb(0x21); // Save masks
@@ -21,5 +21,5 @@ void remap_pic() {
     outb(0x21, a1); // Restore saved masks
     outb(0xA1, a2);
 
-    kprintf("[PIC] Remapped IRQs\n");
+    tty_printf("[PIC] Remapped IRQs\n");
 }

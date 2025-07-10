@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 
 void enable_fpu_sse(void) {
     uint64_t cr0, cr4;
@@ -19,5 +19,5 @@ void enable_fpu_sse(void) {
     // Initialize the FPU
     __asm__ volatile ("fninit");
 
-    kprintf("[FPU] Test: %f\n", 0.123123);
+    tty_printf("[FPU] Test: %f\n", 0.123123);
 }
