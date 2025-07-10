@@ -49,7 +49,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     struct FramebufferPixelBitmask fb_bitmask = {
         efi_pixel_bitmask.RedMask,
         efi_pixel_bitmask.GreenMask,
-        efi_pixel_bitmask.BlueMask
+        efi_pixel_bitmask.BlueMask,
+        efi_pixel_bitmask.ReservedMask
     };
 
     kernel_main(

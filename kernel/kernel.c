@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include <kernel/io/serial.h>
 #include <kernel/io/print.h>
 #include <kernel/cpu/fpu.h>
@@ -32,13 +34,25 @@ void kernel_main(
     bitmap_init();
 
     if (fb_size > 0) {
-        size_t fb_pages = fb_size / PAGE_SIZE_2MB;
+        bool fail = false;
         void *fb_buffer = alloc_page();
+        if (fb_buffer == NULL) fail = true;
+        
+        size_t fb_pages = fb_size / PAGE_SIZE_2MB;
         for (size_t i = 0; i < fb_pages; ++i) {
-            alloc_page();
+            void *page = alloc_page();
+            if (page == NULL) {
+                fail = true;
+                break;
+            }
         }
-        fb_init_buffer(fb_buffer);
-        fb_present();
+
+        if (!fail) {
+            fb_init_buffer(fb_buffer);
+            fb_present();
+        } else {
+            kprintf("[Kernel] Failed to allocate memory for double-buffering.\n");
+        }
     }
 
     remap_pic();
