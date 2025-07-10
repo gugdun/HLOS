@@ -33,9 +33,18 @@ struct FramebufferBitmaskOffset {
 void fb_init(uint64_t base, size_t size, uint32_t width, uint32_t height, FramebufferPixelFormat format, struct FramebufferPixelBitmask bitmask);
 void fb_init_buffer(void *buffer);
 void fb_present(void);
+uint32_t fb_get_width(void);
+uint32_t fb_get_height(void);
 fb_color_t fb_color_rgb(float r, float g, float b);
 fb_color_t fb_color_rgba(float r, float g, float b, float a);
 void fb_clear(fb_color_t color);
 void fb_set(fb_color_t color, uint32_t x, uint32_t y);
+void fb_line(fb_color_t color, uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1);
+void fb_hline(fb_color_t color, uint32_t x0, uint32_t x1, uint32_t y);
+void fb_vline(fb_color_t color, uint32_t x, uint32_t y0, uint32_t y1);
+void fb_rect(fb_color_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+void fb_rect_fill(fb_color_t color, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+void fb_triangle(fb_color_t color, uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
+void fb_triangle_fill(fb_color_t color, uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 
 #endif
