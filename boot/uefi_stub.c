@@ -27,6 +27,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     UINTN fb_size = gop->Mode->FrameBufferSize;
     UINT32 fb_width = gop->Mode->Info->HorizontalResolution;
     UINT32 fb_height = gop->Mode->Info->VerticalResolution;
+    UINT32 fb_ppsl = gop->Mode->Info->PixelsPerScanLine;
     EFI_GRAPHICS_PIXEL_FORMAT fb_format = gop->Mode->Info->PixelFormat;
     EFI_PIXEL_BITMASK efi_pixel_bitmask = gop->Mode->Info->PixelInformation;
 
@@ -61,6 +62,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         fb_size,
         fb_width,
         fb_height,
+        fb_ppsl,
         (FramebufferPixelFormat)fb_format,
         fb_bitmask
     );

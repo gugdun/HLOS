@@ -2,13 +2,17 @@
 #include <math.h>
 
 #include <kernel/graphics/framebuffer.h>
-#include <kernel/io/print.h>
+#include <kernel/graphics/fonts/8x8.h>
+#include <kernel/io/serial.h>
+#include <kernel/io/tty.h>
 
 fb_color_t *fb_base   = (fb_color_t *)NULL;
 fb_color_t *fb_buffer = (fb_color_t *)NULL;
+uint8_t    *fb_font   = (uint8_t *)NULL;
 size_t      fb_size   = 0;
 uint32_t    fb_width  = 0;
 uint32_t    fb_height = 0;
+uint32_t    fb_ppsl   = 0; // Pixels Per Scan Line
 
 FramebufferPixelFormat fb_format = 0;
 struct FramebufferPixelBitmask fb_bitmask = { 0, 0, 0, 0 };
@@ -18,13 +22,22 @@ static inline void swap_u32(uint32_t *a, uint32_t *b) {
     uint32_t t = *a; *a = *b; *b = t;
 }
 
-void fb_init(uint64_t base, size_t size, uint32_t width, uint32_t height, FramebufferPixelFormat format, struct FramebufferPixelBitmask bitmask)
-{
-    fb_base = (uint32_t *)base;
-    fb_size = size;
-    fb_width = width;
-    fb_height = height;
-    fb_format = format;
+void fb_init(
+    uint64_t base,
+    size_t size,
+    uint32_t width,
+    uint32_t height,
+    uint32_t ppsl,
+    FramebufferPixelFormat format,
+    struct FramebufferPixelBitmask bitmask
+) {
+    fb_base    = (uint32_t *)base;
+    fb_font    = (uint8_t *)console_font_8x8;
+    fb_size    = size;
+    fb_width   = width;
+    fb_height  = height;
+    fb_ppsl    = ppsl;
+    fb_format  = format;
     fb_bitmask = bitmask;
 
     if (fb_format == BitMaskFormat) {
@@ -35,44 +48,53 @@ void fb_init(uint64_t base, size_t size, uint32_t width, uint32_t height, Frameb
         while ((fb_bitmask.a >> bitmask_offset.a) == 0 && bitmask_offset.a < 32) bitmask_offset.a++;
     }
 
+    if (fb_base != NULL && fb_size > 0) {
+        fb_clear(fb_color_rgb(CLEAR_COLOR_R, CLEAR_COLOR_G, CLEAR_COLOR_B));
+    }
+
+    tty_init(
+        fb_color_rgb(TEXT_COLOR_R, TEXT_COLOR_G, TEXT_COLOR_B),
+        fb_color_rgb(CLEAR_COLOR_R, CLEAR_COLOR_G, CLEAR_COLOR_B),
+        console_font_8x8
+    );
+
     if (fb_base == NULL || fb_size == 0) {
-        kprintf("[Framebuffer] Initialization failed...\n");
+        tty_printf("[Framebuffer] Initialization failed...\n");
         return;
     }
 
-    fb_clear(fb_color_rgb(CLEAR_COLOR_R, CLEAR_COLOR_G, CLEAR_COLOR_B));
-    kprintf(
-        "[Framebuffer] Base: 0x%x Size: 0x%x Width: %u Height: %u\n  Format: %d\n  R Mask: 0x%x\n  G Mask: 0x%x\n  B Mask: 0x%x\n",
-        base, size, width, height,
-        format, bitmask.r, bitmask.g, bitmask.b
+    tty_printf(
+        "[Framebuffer] Base: 0x%x, Size: 0x%x, Width: %u, Height: %u, Pixels Per Scanline: %u\n  Format: %d\n  R Mask: 0x%x\n  G Mask: 0x%x\n  B Mask: 0x%x\n  A Mask: 0x%x\n",
+        base, size, width, height, ppsl, (int)format,
+        fb_bitmask.r, fb_bitmask.g, fb_bitmask.b, fb_bitmask.a
     );
 }
 
 void fb_init_buffer(void *buffer)
 {
     if (buffer == NULL) {
-        kprintf("[Framebuffer] Cannot enable double-buffering. Pointer is NULL.\n");
+        tty_printf("[Framebuffer] Cannot enable double-buffering. Pointer is NULL.\n");
         return;
     }
 
     fb_buffer = (uint32_t *)buffer;
     fb_clear(fb_color_rgb(CLEAR_COLOR_R, CLEAR_COLOR_G, CLEAR_COLOR_B));
 
-    kprintf("[Framebuffer] Enabled double-buffering @ 0x%x\n", (uint64_t)fb_buffer);
+    tty_printf("[Framebuffer] Enabled double-buffering @ 0x%x\n", (uint64_t)fb_buffer);
 }
 
 void fb_present()
 {
     if (fb_base == NULL) {
 #ifdef HLOS_DEBUG
-        kprintf("[Framebuffer] Cannot present. Not initialized!\n");
+        tty_printf("[Framebuffer] Cannot present. Not initialized!\n");
 #endif
         return;
     }
 
     if (fb_buffer == NULL) {
 #ifdef HLOS_DEBUG
-        kprintf("[Framebuffer] Nothing to present. Single-buffered.\n");
+        tty_printf("[Framebuffer] Nothing to present. Single-buffered.\n");
 #endif
         return;
     }
@@ -88,6 +110,11 @@ uint32_t fb_get_width()
 uint32_t fb_get_height()
 {
     return fb_height;
+}
+
+bool fb_is_initialized()
+{
+    return (fb_base != NULL && fb_size > 0);
 }
 
 fb_color_t fb_color_rgb(float r, float g, float b)
@@ -140,8 +167,8 @@ void fb_clear(fb_color_t color)
 {
     fb_color_t *ptr = fb_buffer;
     if (ptr == NULL) ptr = fb_base;
-    const size_t pixels = fb_width * fb_height;
-    for (size_t y = 0; y < pixels; y += fb_width) {
+    const size_t pixels = fb_ppsl * fb_height;
+    for (size_t y = 0; y < pixels; y += fb_ppsl) {
         for (size_t x = 0; x < fb_width; ++x) {
             ptr[x + y] = color;
         }
@@ -151,7 +178,7 @@ void fb_clear(fb_color_t color)
 void fb_set(fb_color_t color, uint32_t x, uint32_t y)
 {
     if (x < fb_width && y < fb_height) {
-        const size_t index = y * fb_width + x;
+        const size_t index = y * fb_ppsl + x;
         if (fb_buffer != NULL) fb_buffer[index] = color;
         else fb_base[index] = color;
     }
@@ -264,4 +291,33 @@ void fb_triangle_fill(fb_color_t color, uint32_t x0, uint32_t y0, uint32_t x1, u
     }
     
     #undef INTERP_X
+}
+
+void fb_draw_char(fb_color_t color, uint32_t x, uint32_t y, char c, const uint8_t *font) {
+    const uint8_t *glyph = &font[(uint8_t)c * 8];
+    for (uint32_t row = 0; row < 8; ++row) {
+        uint8_t bits = glyph[row];
+        for (uint32_t col = 0; col < 8; ++col) {
+            if (bits & (1 << (7 - col))) {
+                fb_set(color, x + col, y + row);
+            }
+        }
+    }
+}
+
+void fb_scroll_up(uint32_t rows, fb_color_t color)
+{
+    if (rows == 0 || rows >= fb_height) return;
+    fb_color_t *ptr = fb_buffer;
+    if (ptr == NULL) ptr = fb_base;
+    size_t line_size = fb_ppsl * sizeof(fb_color_t);
+    size_t move_size = (fb_height - rows) * line_size;
+    // Move lines up
+    memmove(ptr, ptr + rows * fb_ppsl, move_size);
+    // Clear new rows at the bottom
+    for (uint32_t y = fb_height - rows; y < fb_height; ++y) {
+        for (uint32_t x = 0; x < fb_width; ++x) {
+            ptr[y * fb_ppsl + x] = color;
+        }
+    }
 }

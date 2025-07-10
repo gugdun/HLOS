@@ -2,7 +2,7 @@
 #include <lib/math.h>
 
 #include <kernel/io/serial.h>
-#include <kernel/io/print.h>
+#include <kernel/io/tty.h>
 #include <kernel/cpu/fpu.h>
 #include <kernel/cpu/gdt.h>
 #include <kernel/interrupts/idt.h>
@@ -22,12 +22,13 @@ void kernel_main(
     size_t fb_size,
     uint32_t fb_width,
     uint32_t fb_height,
+    uint32_t fb_ppsl,
     FramebufferPixelFormat fb_format,
     struct FramebufferPixelBitmask fb_bitmask
 ) {
     serial_init();
+    fb_init(fb_base, fb_size, fb_width, fb_height, fb_ppsl, fb_format, fb_bitmask);
     enable_fpu_sse();
-    fb_init(fb_base, fb_size, fb_width, fb_height, fb_format, fb_bitmask);
     disable_interrupts();
     setup_tss();
     setup_gdt();
@@ -51,9 +52,8 @@ void kernel_main(
 
         if (!fail) {
             fb_init_buffer(fb_buffer);
-            fb_present();
         } else {
-            kprintf("[Kernel] Failed to allocate memory for double-buffering.\n");
+            tty_printf("[Kernel] Failed to allocate memory for double-buffering.\n");
         }
     }
 
@@ -65,9 +65,9 @@ void kernel_main(
     const fb_color_t clear_color = fb_color_rgb(0.1f, 0.1f, 0.1f);
     const fb_color_t triangle_color = fb_color_rgb(0.1f, 0.7f, 0.2f);
 
-    vector2 v1 = {0.0f, 0.5f};
-    vector2 v2 = {-0.5f, -0.5f};
-    vector2 v3 = {0.5f, -0.5f};
+    vector2 v1 = {  0.0f,  0.5f };
+    vector2 v2 = { -0.5f, -0.5f };
+    vector2 v3 = {  0.5f, -0.5f };
 
     while (1) {
         fb_clear(clear_color);

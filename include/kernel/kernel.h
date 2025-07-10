@@ -12,6 +12,7 @@ void kernel_main(
     size_t fb_size,
     uint32_t fb_width,
     uint32_t fb_height,
+    uint32_t fb_ppsl,
     FramebufferPixelFormat fb_format,
     struct FramebufferPixelBitmask fb_bitmask
 );
