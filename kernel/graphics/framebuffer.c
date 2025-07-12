@@ -1,5 +1,5 @@
 #include <string.h>
-#include <math.h>
+#include <lib/math.h>
 
 #include <kernel/graphics/framebuffer.h>
 #include <kernel/graphics/fonts/8x8.h>
@@ -22,23 +22,15 @@ static inline void swap_u32(uint32_t *a, uint32_t *b) {
     uint32_t t = *a; *a = *b; *b = t;
 }
 
-void fb_init(
-    uint64_t base,
-    size_t size,
-    uint32_t width,
-    uint32_t height,
-    uint32_t ppsl,
-    FramebufferPixelFormat format,
-    struct FramebufferPixelBitmask bitmask
-) {
-    fb_base    = (uint32_t *)base;
+void fb_init(struct FramebufferParams *params) {
+    fb_base    = (uint32_t *)params->base;
     fb_font    = (uint8_t *)console_font_8x8;
-    fb_size    = size;
-    fb_width   = width;
-    fb_height  = height;
-    fb_ppsl    = ppsl;
-    fb_format  = format;
-    fb_bitmask = bitmask;
+    fb_size    = params->size;
+    fb_width   = params->width;
+    fb_height  = params->height;
+    fb_ppsl    = params->ppsl;
+    fb_format  = params->format;
+    fb_bitmask = params->bitmask;
 
     if (fb_format == BitMaskFormat) {
         fb_bitmask.a = ~(fb_bitmask.r + fb_bitmask.g + fb_bitmask.b);
@@ -65,7 +57,7 @@ void fb_init(
 
     tty_printf(
         "[Framebuffer] Base: 0x%x, Size: 0x%x, Width: %u, Height: %u, Pixels Per Scanline: %u\n  Format: %d\n  R Mask: 0x%x\n  G Mask: 0x%x\n  B Mask: 0x%x\n  A Mask: 0x%x\n",
-        base, size, width, height, ppsl, (int)format,
+        fb_base, fb_size, fb_width, fb_height, fb_ppsl, (int)fb_format,
         fb_bitmask.r, fb_bitmask.g, fb_bitmask.b, fb_bitmask.a
     );
 }
@@ -112,6 +104,11 @@ uint32_t fb_get_height()
     return fb_height;
 }
 
+size_t fb_get_size()
+{
+    return fb_size;
+}
+
 bool fb_is_initialized()
 {
     return (fb_base != NULL && fb_size > 0);
@@ -119,6 +116,10 @@ bool fb_is_initialized()
 
 fb_color_t fb_color_rgb(float r, float g, float b)
 {
+    uint32_t r_channel;
+    uint32_t g_channel;
+    uint32_t b_channel;
+
     if (r < 0.0f) r = 0.0f;
     else if (r > 1.0f) r = 1.0f;
     if (g < 0.0f) g = 0.0f;
@@ -134,9 +135,9 @@ fb_color_t fb_color_rgb(float r, float g, float b)
             return ((uint32_t)(r * 255.0f) << 16) + ((uint32_t)(g * 255.0f) << 8) + (uint32_t)(b * 255.0f) + 0xFF000000;
 
         case BitMaskFormat:
-            const uint32_t r_channel = ((uint32_t)(r * (float)(fb_bitmask.r >> bitmask_offset.r)) << bitmask_offset.r);
-            const uint32_t g_channel = ((uint32_t)(g * (float)(fb_bitmask.g >> bitmask_offset.g)) << bitmask_offset.g);
-            const uint32_t b_channel = ((uint32_t)(b * (float)(fb_bitmask.b >> bitmask_offset.b)) << bitmask_offset.b);
+            r_channel = ((uint32_t)(r * (float)(fb_bitmask.r >> bitmask_offset.r)) << bitmask_offset.r);
+            g_channel = ((uint32_t)(g * (float)(fb_bitmask.g >> bitmask_offset.g)) << bitmask_offset.g);
+            b_channel = ((uint32_t)(b * (float)(fb_bitmask.b >> bitmask_offset.b)) << bitmask_offset.b);
             return r_channel + g_channel + b_channel + fb_bitmask.a;
 
         default:
@@ -146,6 +147,8 @@ fb_color_t fb_color_rgb(float r, float g, float b)
 
 uint32_t fb_color_rgba(float r, float g, float b, float a)
 {
+    uint32_t a_channel;
+    
     if (a < 0.0f) a = 0.0f;
     else if (a > 1.0f) a = 1.0f;
 
@@ -155,7 +158,7 @@ uint32_t fb_color_rgba(float r, float g, float b, float a)
             return fb_color_rgb(r, g, b) + ((uint32_t)(a * 255.0f) << 24) - 0xFF000000;
 
         case BitMaskFormat:
-            const uint32_t a_channel = ((uint32_t)(a * (float)(fb_bitmask.a >> bitmask_offset.a)) << bitmask_offset.a);
+            a_channel = ((uint32_t)(a * (float)(fb_bitmask.a >> bitmask_offset.a)) << bitmask_offset.a);
             return fb_color_rgb(r, g, b) - fb_bitmask.a + a_channel;
 
         default:

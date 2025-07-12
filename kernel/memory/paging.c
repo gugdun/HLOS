@@ -58,7 +58,7 @@ static void map_virtual(struct MemoryMapEntry *entry)
     next_virtual_heap_addr += aligned_size;
 }
 
-void setup_paging(struct MemoryMapEntry *memory_map, size_t memory_map_size, size_t descriptor_size, uint64_t fb_base, size_t fb_size)
+void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_size)
 {
     // Map framebuffer
     size_t fb_pages = (fb_size / (uint64_t)PAGE_SIZE_4KB) + 1;
@@ -66,8 +66,8 @@ void setup_paging(struct MemoryMapEntry *memory_map, size_t memory_map_size, siz
     map_identity(&fb_entry);
 
     // Map UEFI memory map entries
-    for (size_t i = 0; i < memory_map_size; i += descriptor_size) {
-        struct MemoryMapEntry *entry = (struct MemoryMapEntry *)((uint8_t *)memory_map + i);
+    for (size_t i = 0; i < params->memory_map_size; i += params->descriptor_size) {
+        struct MemoryMapEntry *entry = (struct MemoryMapEntry *)((uint8_t *)params->memory_map + i);
         switch (entry->type) {
             case KernelCode:
             case KernelData:

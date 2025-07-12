@@ -1,6 +1,8 @@
-.vscode/**
-out/**
-obj/**
+.vscode
+out
+obj
+.cache
 **/*.o
 **/*.EFI
 **/*.img
+compile_commands.json

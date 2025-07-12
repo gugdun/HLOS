@@ -10,6 +10,12 @@
 #define VIRT_HEAP_BASE 0xFFFF800000000000ULL
 #define MAX_PAGES      (PAGING_MAP_GIB * 512)
 
-void setup_paging(struct MemoryMapEntry *memory_map, size_t memory_map_size, size_t descriptor_size, uint64_t fb_base, size_t fb_size);
+struct MemoryMapParams {
+    struct MemoryMapEntry *memory_map;
+    size_t memory_map_size;
+    size_t descriptor_size;
+};
+
+void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_size);
 
 #endif

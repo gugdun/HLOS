@@ -1,20 +1,10 @@
 #ifndef _KERNEL_H
 #define _KERNEL_H
 
-#include <kernel/memory/mem_entry.h>
 #include <kernel/graphics/framebuffer.h>
+#include <kernel/fs/initrd.h>
+#include <kernel/memory/paging.h>
 
-void kernel_main(
-    struct MemoryMapEntry *memory_map,
-    size_t memory_map_size,
-    size_t descriptor_size,
-    uint64_t fb_base,
-    size_t fb_size,
-    uint32_t fb_width,
-    uint32_t fb_height,
-    uint32_t fb_ppsl,
-    FramebufferPixelFormat fb_format,
-    struct FramebufferPixelBitmask fb_bitmask
-);
+void kernel_main(struct FramebufferParams fb_params, struct InitrdParams initrd_params, struct MemoryMapParams memmap_params);
 
 #endif

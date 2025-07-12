@@ -35,20 +35,23 @@ struct FramebufferBitmaskOffset {
   uint8_t a;
 };
 
-void fb_init(
-  uint64_t base,
-  size_t size,
-  uint32_t width,
-  uint32_t height,
-  uint32_t ppsl,
-  FramebufferPixelFormat format,
-  struct FramebufferPixelBitmask bitmask
-);
+struct FramebufferParams {
+  uint64_t base;
+  size_t size;
+  uint32_t width;
+  uint32_t height;
+  uint32_t ppsl;
+  FramebufferPixelFormat format;
+  struct FramebufferPixelBitmask bitmask;
+};
+
+void fb_init(struct FramebufferParams *params);
 
 void fb_init_buffer(void *buffer);
 void fb_present(void);
 uint32_t fb_get_width(void);
 uint32_t fb_get_height(void);
+size_t fb_get_size(void);
 bool fb_is_initialized();
 fb_color_t fb_color_rgb(float r, float g, float b);
 fb_color_t fb_color_rgba(float r, float g, float b, float a);
