@@ -50,14 +50,14 @@ void demo_triangle_tick(struct DemoTriangleState *state)
     const float angle = state->angle;
     matrix2x2 rotation_matrix = {
         .m = {
-            {cos(angle), -sin(angle)},
-            {sin(angle), cos(angle)}
+            {lib_cos(angle), -lib_sin(angle)},
+            {lib_sin(angle), lib_cos(angle)}
         }
     };
 
-    vector2 rotated_v1 = matrix2x2_mul_vector2(rotation_matrix, state->v1);
-    vector2 rotated_v2 = matrix2x2_mul_vector2(rotation_matrix, state->v2);
-    vector2 rotated_v3 = matrix2x2_mul_vector2(rotation_matrix, state->v3);
+    vector2 rotated_v1 = lib_matrix2x2_mul_vector2(rotation_matrix, state->v1);
+    vector2 rotated_v2 = lib_matrix2x2_mul_vector2(rotation_matrix, state->v2);
+    vector2 rotated_v3 = lib_matrix2x2_mul_vector2(rotation_matrix, state->v3);
 
     // Correct aspect ratio
     const float width = fb_get_width();

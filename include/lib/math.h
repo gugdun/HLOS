@@ -3,11 +3,11 @@
 
 #define M_PI 3.141592653589793
 
-int abs(int x);
-double sin(double x);
-double cos(double x);
-double rad2deg(double radians);
-double deg2rad(double degrees);
+int lib_abs(int x);
+double lib_sin(double x);
+double lib_cos(double x);
+double lib_rad2deg(double radians);
+double lib_deg2rad(double degrees);
 
 typedef struct {
     double x, y;
@@ -17,9 +17,9 @@ typedef struct {
     double m[2][2];
 } matrix2x2;
 
-vector2 vector2_add(vector2 a, vector2 b);
-matrix2x2 matrix2x2_add(matrix2x2 a, matrix2x2 b);
-matrix2x2 matrix2x2_mul(matrix2x2 a, matrix2x2 b);
-vector2 matrix2x2_mul_vector2(matrix2x2 m, vector2 v);
+vector2 lib_vector2_add(vector2 a, vector2 b);
+matrix2x2 lib_matrix2x2_add(matrix2x2 a, matrix2x2 b);
+matrix2x2 lib_matrix2x2_mul(matrix2x2 a, matrix2x2 b);
+vector2 lib_matrix2x2_mul_vector2(matrix2x2 m, vector2 v);
 
 #endif

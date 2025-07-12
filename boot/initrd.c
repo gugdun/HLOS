@@ -14,7 +14,8 @@ EFI_STATUS load_initrd(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable, st
     EFI_STATUS Status;
 
     // Get LoadedImage protocol
-    Status = SystemTable->BootServices->HandleProtocol(
+    Status = uefi_call_wrapper(
+        SystemTable->BootServices->HandleProtocol, 3,
         ImageHandle,
         &gEfiLoadedImageProtocolGuid,
         (VOID **)&LoadedImage
@@ -22,7 +23,8 @@ EFI_STATUS load_initrd(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable, st
     if (EFI_ERROR(Status)) return Status;
 
     // Get SimpleFileSystem protocol
-    Status = SystemTable->BootServices->HandleProtocol(
+    Status = uefi_call_wrapper(
+        SystemTable->BootServices->HandleProtocol, 3,
         LoadedImage->DeviceHandle,
         &gEfiSimpleFileSystemProtocolGuid,
         (VOID **)&FileSystem
@@ -30,11 +32,12 @@ EFI_STATUS load_initrd(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable, st
     if (EFI_ERROR(Status)) return Status;
 
     // Open volume (root dir)
-    Status = FileSystem->OpenVolume(FileSystem, &Root);
+    Status = uefi_call_wrapper(FileSystem->OpenVolume, 2, FileSystem, &Root);
     if (EFI_ERROR(Status)) return Status;
 
     // Open initrd file
-    Status = Root->Open(
+    Status = uefi_call_wrapper(
+        Root->Open, 5,
         Root,
         &File,
         initrd_path,
@@ -44,32 +47,38 @@ EFI_STATUS load_initrd(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable, st
     if (EFI_ERROR(Status)) return Status;
 
     // Get file size
-    Status = File->GetInfo(File, &gEfiFileInfoGuid, &FileInfoSize, NULL);
+    Status = uefi_call_wrapper(File->GetInfo, 4, File, &gEfiFileInfoGuid, &FileInfoSize, NULL);
     if (Status == EFI_BUFFER_TOO_SMALL) {
-        Status = SystemTable->BootServices->AllocatePool(
+        Status = uefi_call_wrapper(
+            SystemTable->BootServices->AllocatePool, 3,
             EfiLoaderData,
             FileInfoSize,
             (VOID **)&FileInfo
         );
         if (EFI_ERROR(Status)) return Status;
 
-        Status = File->GetInfo(File, &gEfiFileInfoGuid, &FileInfoSize, FileInfo);
+        Status = uefi_call_wrapper(File->GetInfo, 4, File, &gEfiFileInfoGuid, &FileInfoSize, FileInfo);
         if (EFI_ERROR(Status)) return Status;
 
         InitrdSize = FileInfo->FileSize;
-        SystemTable->BootServices->FreePool(FileInfo);
+        uefi_call_wrapper(SystemTable->BootServices->FreePool, 1, FileInfo);
     } else return Status;
 
     // Allocate memory
-    Status = SystemTable->BootServices->AllocatePool(EfiLoaderData, InitrdSize, (VOID **)&InitrdBuffer);
+    Status = uefi_call_wrapper(
+        SystemTable->BootServices->AllocatePool, 4,
+        EfiLoaderData,
+        InitrdSize,
+        (VOID **)&InitrdBuffer
+    );
     if (EFI_ERROR(Status)) return Status;
 
     // Read file into memory
     UINTN BytesRead = InitrdSize;
-    Status = File->Read(File, &BytesRead, InitrdBuffer);
+    Status = uefi_call_wrapper(File->Read, 3, File, &BytesRead, InitrdBuffer);
     if (EFI_ERROR(Status)) return Status;
 
-    File->Close(File);
+    uefi_call_wrapper(File->Close, 1, File);
     params->addr = (uint64_t)InitrdBuffer;
     params->size = (uint64_t)BytesRead;
 

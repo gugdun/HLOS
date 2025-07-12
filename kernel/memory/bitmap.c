@@ -11,7 +11,7 @@ static size_t   total_pages = 0;
 void bitmap_init()
 {
     total_pages = (next_virtual_heap_addr - VIRT_HEAP_BASE) / PAGE_SIZE_2MB;
-    memset((void *)page_bitmap, 0, MAX_PAGES / 8);
+    lib_memset((void *)page_bitmap, 0, MAX_PAGES / 8);
     tty_printf("[Bitmap] Total pages: %u\n", total_pages);
 }
 

@@ -1,7 +1,7 @@
 #ifndef _DEMO_TRIANGLE_H
 #define _DEMO_TRIANGLE_H
 
-#include <lib/math.h>
+#include <math.h>
 #include <kernel/graphics/framebuffer.h>
 
 struct DemoTriangleState {

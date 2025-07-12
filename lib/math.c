@@ -1,10 +1,10 @@
 #include <lib/math.h>
 
-int abs(int x) {
+int lib_abs(int x) {
     return x < 0 ? -x : x;
 }
 
-double sin(double x) {
+double lib_sin(double x) {
     // Reduce x to [-M_PI, M_PI]
     while (x > M_PI) x -= 2 * M_PI;
     while (x < -M_PI) x += 2 * M_PI;
@@ -21,7 +21,7 @@ double sin(double x) {
     return result;
 }
 
-double cos(double x) {
+double lib_cos(double x) {
     // Reduce x to [-M_PI, M_PI]
     while (x > M_PI) x -= 2 * M_PI;
     while (x < -M_PI) x += 2 * M_PI;
@@ -38,22 +38,22 @@ double cos(double x) {
     return result;
 }
 
-double rad2deg(double radians) {
+double lib_rad2deg(double radians) {
     return radians * (180.0 / M_PI);
 }
 
-double deg2rad(double degrees) {
+double lib_deg2rad(double degrees) {
     return degrees * (M_PI / 180.0);
 }
 
-vector2 vector2_add(vector2 a, vector2 b) {
+vector2 lib_vector2_add(vector2 a, vector2 b) {
     vector2 result;
     result.x = a.x + b.x;
     result.y = a.y + b.y;
     return result;
 }
 
-matrix2x2 matrix2x2_add(matrix2x2 a, matrix2x2 b) {
+matrix2x2 lib_matrix2x2_add(matrix2x2 a, matrix2x2 b) {
     matrix2x2 result;
     for (int i = 0; i < 2; ++i)
         for (int j = 0; j < 2; ++j)
@@ -61,7 +61,7 @@ matrix2x2 matrix2x2_add(matrix2x2 a, matrix2x2 b) {
     return result;
 }
 
-matrix2x2 matrix2x2_mul(matrix2x2 a, matrix2x2 b) {
+matrix2x2 lib_matrix2x2_mul(matrix2x2 a, matrix2x2 b) {
     matrix2x2 result;
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 2; ++j) {
@@ -74,7 +74,7 @@ matrix2x2 matrix2x2_mul(matrix2x2 a, matrix2x2 b) {
     return result;
 }
 
-vector2 matrix2x2_mul_vector2(matrix2x2 m, vector2 v) {
+vector2 lib_matrix2x2_mul_vector2(matrix2x2 m, vector2 v) {
     vector2 result;
     result.x = m.m[0][0] * v.x + m.m[0][1] * v.y;
     result.y = m.m[1][0] * v.x + m.m[1][1] * v.y;

@@ -1,40 +1,92 @@
-# HLOS
+# HLOS - A x86_64 UEFI Operating System
 
-**HLOS** is a modern, multitasking operating system designed for x86\_64 architecture. It’s built from the ground up to be minimal, fast, and educational.
+**HLOS** is an operating system designed for the `x86_64` architecture with UEFI boot support. It is built from the ground up with a custom toolchain and a modern kernel.
 
-## Prerequisites
+## 🛠️ Requirements
 
-Tested on **Ubuntu 24.04**. Make sure you have the following packages installed:
-
-### Kernel Compilation
+Make sure the following packages are installed on your system:
 
 ```bash
-sudo apt-get install gcc-mingw-w64
+sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo libisl-dev
+````
+
+## 📦 Setup Toolchain
+
+You'll need to build a custom `binutils` and `gcc` cross-compiler targeting `x86_64-elf` and `x86_64-pe`. Start by cloning the required repositories:
+
+```bash
+mkdir -p $HOME/src
+cd $HOME/src
+git clone https://github.com/gugdun/binutils-hlos
+git clone https://github.com/gugdun/gcc-hlos
 ```
 
-### Building and Running via QEMU
+### Environment Variables
+
+Before building, export these environment variables:
 
 ```bash
-sudo apt-get install qemu-system-x86 ovmf mtools
+export PREFIX="$HOME/opt/x86_64-hlos"
+export TARGET=x86_64-elf
+export PATH="$PREFIX/bin:$PATH"
 ```
 
-## Building
+## 🔧 Building the Toolchain
 
-To compile the kernel:
+### 1. Build `binutils` (x86\_64-elf)
 
 ```bash
+cd $HOME/src
+mkdir binutils-build
+cd binutils-build
+../binutils-hlos/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror
 make
+make install
 ```
 
-## Running
+### 2. Build `binutils` (x86\_64-pe)
 
-To build the USB image and launch the OS in QEMU:
+Repeat the above process, replacing `--target=$TARGET` with `--target=x86_64-pe`.
+
+### 3. Build `GCC` (x86\_64-elf)
+
+```bash
+cd $HOME/src
+mkdir gcc-build
+cd gcc-build
+../gcc-hlos/configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c,c++ --without-headers --disable-hosted-libstdcxx
+make all-gcc
+make all-target-libgcc
+make all-target-libstdc++-v3
+make install-gcc
+make install-target-libgcc
+make install-target-libstdc++-v3
+```
+
+## 🧵 Building HLOS
+
+### 1. Build the Kernel
+
+```bash
+make gnu-efi   # Run this only once
+make -j$(nproc)
+```
+
+### 2. Build the Initrd
+
+```bash
+make initrd
+```
+
+## 🚀 Running in QEMU
+
+You can run HLOS in a QEMU virtual machine using:
 
 ```bash
 make qemu
 ```
 
-## License
+## 📄 License
 
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
-Copyright © 2025 **gugdun**
+**MIT License**
+© 2025 [gugdun](https://github.com/gugdun)

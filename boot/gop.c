@@ -1,18 +1,13 @@
+#include "efibind.h"
 #include <boot/gop.h>
 #include <efilib.h>
-
-static EFI_GUID GraphicsOutputProtocolGUID = {
-    0x9042a9de, 0x23dc, 0x4a38,
-    { 0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a }
-};
 
 EFI_STATUS locate_gop(EFI_SYSTEM_TABLE *SystemTable, struct FramebufferParams *params)
 {
     EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = NULL;
-    EFI_STATUS status = SystemTable->BootServices->LocateProtocol(
-        &GraphicsOutputProtocolGUID,
-        NULL,
-        (void **)&gop
+    EFI_STATUS status = uefi_call_wrapper(
+        SystemTable->BootServices->LocateProtocol, 3,
+        &gEfiGraphicsOutputProtocolGuid, NULL, (void **)&gop
     );
     if (EFI_ERROR(status)) return status;
 

@@ -1,3 +1,7 @@
+ARCH		:= x86_64
+TARGET		:= pei-x86-64
+TOOLCHAIN	:= $(HOME)/opt/$(ARCH)-hlos
+
 GNU_EFI	:= gnu-efi
 EFI_INC := $(GNU_EFI)/inc
 EFI_LIB := $(GNU_EFI)/lib
@@ -8,13 +12,15 @@ CPU		:= EPYC
 CORES	:= 2
 MEMORY	:= 4096
 
-CC      := x86_64-w64-mingw32-gcc
-LD		:= x86_64-w64-mingw32-gcc
+CC      := $(TOOLCHAIN)/bin/$(ARCH)-elf-gcc
+LD		:= $(TOOLCHAIN)/bin/$(ARCH)-elf-ld
+OBJCOPY	:= $(TOOLCHAIN)/bin/$(ARCH)-pe-objcopy
+
 DEBUG	:= -DHLOS_DEBUG
-INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/x86_64 -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
-LIBRARY := -L$(GNU_EFI)/x86_64/lib -L$(GNU_EFI)/x86_64/gnuefi
-CFLAGS  := $(DEBUG) -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone $(INCLUDE)
-LDFLAGS := -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main $(LIBRARY)
+INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
+LIBRARY := -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
+CFLAGS  := $(DEBUG) $(INCLUDE) -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone
+LDFLAGS := -shared -Bsymbolic -z noexecstack -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi -T$(GNU_EFI)/gnuefi/elf_$(ARCH)_efi.lds $(LIBRARY)
 
 BOOT_SRC	:= $(wildcard boot/*.c)
 BOOT_OBJ	:= $(patsubst boot/%.c, obj/boot/%.o, $(BOOT_SRC))
@@ -30,16 +36,13 @@ EFI_OUTPUT	:= out/BOOTX64.EFI
 
 all: $(EFI_OUTPUT)
 
-$(EFI_OUTPUT): obj/gnu-efi/lib/data.o $(OBJECTS)
+$(EFI_OUTPUT): $(OBJECTS)
 	@mkdir -p out
 	@echo "Linking $(EFI_OUTPUT)..."
-	@$(LD) $(LDFLAGS) -o $(EFI_OUTPUT) $(OBJECTS) obj/gnu-efi/lib/data.o
+	@$(LD) $(LDFLAGS) -o out/kernel.so $(GNU_EFI)/$(ARCH)/gnuefi/crt0-efi-x86_64.o $(OBJECTS) -lgnuefi -lefi
+	@$(OBJCOPY) -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc \
+		--target $(TARGET) --subsystem=10 out/kernel.so $(EFI_OUTPUT)
 	@echo "Done!"
-
-obj/gnu-efi/lib/data.o: $(EFI_LIB)/data.c
-	@mkdir -p obj/gnu-efi/lib
-	@echo "Compiling $<..."
-	@$(CC) $(CFLAGS) -c $< -o $@
 
 obj/boot/%.o: boot/%.c
 	@mkdir -p obj/boot
@@ -73,6 +76,11 @@ obj/demo/%.o: demo/%.c
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
+gnu-efi:
+	@echo "Compiling gnu-efi..."
+	@make -C gnu-efi
+	@echo "Done!"
+
 initrd:
 	@echo "Building initrd..."
 	@tar --format=ustar -cf out/initrd.tar initrd
@@ -90,7 +98,7 @@ usb: $(EFI_OUTPUT) initrd
 
 qemu: usb
 	@echo "Starting QEMU..."
-	@qemu-system-x86_64 -L $(OVMF) -pflash $(PFLASH) \
+	@qemu-system-$(ARCH) -L $(OVMF) -pflash $(PFLASH) \
 		-cpu $(CPU) -enable-kvm -smp $(CORES) -m $(MEMORY) \
 		-serial stdio \
 		-usb -drive if=none,id=usbstick,format=raw,file=out/usb.img \

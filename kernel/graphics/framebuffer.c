@@ -91,7 +91,7 @@ void fb_present()
         return;
     }
 
-    memcpy((void *)fb_base, (const void *)fb_buffer, fb_size);
+    lib_memcpy((void *)fb_base, (const void *)fb_buffer, fb_size);
 }
 
 uint32_t fb_get_width()
@@ -189,9 +189,9 @@ void fb_set(fb_color_t color, uint32_t x, uint32_t y)
 
 void fb_line(fb_color_t color, uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
 {
-    int dx = abs((int)x1 - (int)x0);
+    int dx = lib_abs((int)x1 - (int)x0);
     int sx = x0 < x1 ? 1 : -1;
-    int dy = -abs((int)y1 - (int)y0);
+    int dy = -lib_abs((int)y1 - (int)y0);
     int sy = y0 < y1 ? 1 : -1;
     int err = dx + dy;
 
@@ -316,7 +316,7 @@ void fb_scroll_up(uint32_t rows, fb_color_t color)
     size_t line_size = fb_ppsl * sizeof(fb_color_t);
     size_t move_size = (fb_height - rows) * line_size;
     // Move lines up
-    memmove(ptr, ptr + rows * fb_ppsl, move_size);
+    lib_memmove(ptr, ptr + rows * fb_ppsl, move_size);
     // Clear new rows at the bottom
     for (uint32_t y = fb_height - rows; y < fb_height; ++y) {
         for (uint32_t x = 0; x < fb_width; ++x) {

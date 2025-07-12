@@ -9,7 +9,8 @@ EFI_STATUS get_memory_map(EFI_SYSTEM_TABLE *SystemTable, UINTN *map_key, struct 
     UINT32 descriptor_version;
     EFI_STATUS Status;
 
-    Status = SystemTable->BootServices->GetMemoryMap(
+    Status = uefi_call_wrapper(
+        SystemTable->BootServices->GetMemoryMap, 5,
         &memory_map_size,
         memory_map,
         map_key,
@@ -19,14 +20,16 @@ EFI_STATUS get_memory_map(EFI_SYSTEM_TABLE *SystemTable, UINTN *map_key, struct 
     if (Status == EFI_BUFFER_TOO_SMALL) {
         memory_map_size += 2 * descriptor_size;
     
-        Status = SystemTable->BootServices->AllocatePool(
+        Status = uefi_call_wrapper(
+            SystemTable->BootServices->AllocatePool, 3,
             EfiLoaderData,
             memory_map_size,
             (VOID **)&memory_map
         );
         if (EFI_ERROR(Status)) return Status;
         
-        Status = SystemTable->BootServices->GetMemoryMap(
+        Status = uefi_call_wrapper(
+            SystemTable->BootServices->GetMemoryMap, 5,
             &memory_map_size,
             memory_map,
             map_key,

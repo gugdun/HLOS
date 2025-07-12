@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <lib/math.h>
 
 #include <kernel/io/serial.h>
 #include <kernel/io/tty.h>

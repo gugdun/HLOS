@@ -1,106 +1,47 @@
 #include <string.h>
 #include <stdint.h>
-#include <emmintrin.h>
 
-void *memset(void* dest, int value, size_t size)
-{
-    uint8_t* ptr = (uint8_t*)dest;
-    size_t i = 0;
+void *lib_memset(void *ptr, int value, size_t num) {
+    unsigned char *p = (unsigned char *)ptr;
+    unsigned char val = (unsigned char)value;
 
-    // Set up 16-byte vector with the repeated byte value
-    __m128i val = _mm_set1_epi8((char)value);
-
-    // Align destination to 16 bytes
-    while (((uintptr_t)(ptr + i) & 0xF) && i < size) {
-        ptr[i++] = (uint8_t)value;
+    for (size_t i = 0; i < num; ++i) {
+        p[i] = val;
     }
 
-    // Bulk fill using 128-bit stores
-    for (; i + 16 <= size; i += 16) {
-        _mm_store_si128((__m128i*)(ptr + i), val);
-    }
+    return ptr;
+}
 
-    // Tail bytes
-    for (; i < size; ++i) {
-        ptr[i] = (uint8_t)value;
+void *lib_memcpy(void *dest, const void *src, size_t n) {
+    unsigned char *d = (unsigned char *)dest;
+    const unsigned char *s = (const unsigned char *)src;
+
+    for (size_t i = 0; i < n; ++i) {
+        d[i] = s[i];
     }
 
     return dest;
 }
 
-void *memcpy(void *dst, const void *src, size_t n)
-{
-    uint8_t *d = (uint8_t *)dst;
-    const uint8_t *s = (const uint8_t *)src;
+void *lib_memmove(void *dest, const void *src, size_t n) {
+    unsigned char *d = (unsigned char *)dest;
+    const unsigned char *s = (const unsigned char *)src;
 
-    // Align to 16-byte boundaries
-    while (((uintptr_t)d % 16 != 0) && n) {
-        *d++ = *s++;
-        --n;
+    if (d == s || n == 0) {
+        return dest;
     }
 
-    // Copy 16 bytes at a time using SSE
-    while (n >= 16) {
-        __m128i reg = _mm_loadu_si128((__m128i *)s);
-        _mm_storeu_si128((__m128i *)d, reg);
-        s += 16;
-        d += 16;
-        n -= 16;
-    }
-
-    // Copy any remaining bytes
-    while (n--) {
-        *d++ = *s++;
-    }
-
-    return dst;
-}
-
-void *memmove(void *dst, const void *src, size_t n)
-{
-    uint8_t *d = (uint8_t *)dst;
-    const uint8_t *s = (const uint8_t *)src;
-    if (d == s || n == 0) return dst;
     if (d < s) {
-        // Forward copy (no overlap or safe)
-        // Align to 16-byte boundaries
-        while (((uintptr_t)d % 16 != 0) && n) {
-            *d++ = *s++;
-            --n;
-        }
-        // Copy 16 bytes at a time using SSE
-        while (n >= 16) {
-            __m128i reg = _mm_loadu_si128((__m128i *)s);
-            _mm_storeu_si128((__m128i *)d, reg);
-            s += 16;
-            d += 16;
-            n -= 16;
-        }
-        // Copy any remaining bytes
-        while (n--) {
-            *d++ = *s++;
+        // Copy forwards
+        for (size_t i = 0; i < n; ++i) {
+            d[i] = s[i];
         }
     } else {
-        // Backward copy (overlap)
-        d += n;
-        s += n;
-        // Align to 16-byte boundaries
-        while (n && ((uintptr_t)d % 16 != 0)) {
-            *(--d) = *(--s);
-            --n;
-        }
-        // Copy 16 bytes at a time using SSE
-        while (n >= 16) {
-            d -= 16;
-            s -= 16;
-            __m128i reg = _mm_loadu_si128((__m128i *)s);
-            _mm_storeu_si128((__m128i *)d, reg);
-            n -= 16;
-        }
-        // Copy any remaining bytes
-        while (n--) {
-            *(--d) = *(--s);
+        // Copy backwards to avoid overwrite when regions overlap
+        for (size_t i = n; i > 0; --i) {
+            d[i - 1] = s[i - 1];
         }
     }
-    return dst;
+
+    return dest;
 }
