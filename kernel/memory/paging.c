@@ -7,13 +7,13 @@
 #define PAGE_PS       (1 << 7)  // Use 2 MiB pages
 #define HEAP_MIN_SIZE 512       // In 4 KiB pages
 
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t pml4[512];
+__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pml4[512];
 
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t pdpt_low[512];
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t pds_low[PAGING_MAP_GIB][512];  // one PD per GiB
+__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pdpt_low[512];
+__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pds_low[PAGING_MAP_GIB][512];  // one PD per GiB
 
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t pdpt_high[512];
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t pds_high[PAGING_MAP_GIB][512]; // one PD per GiB
+__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pdpt_high[512];
+__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pds_high[PAGING_MAP_GIB][512]; // one PD per GiB
 
 uint64_t next_virtual_heap_addr = VIRT_HEAP_BASE;
 
@@ -24,38 +24,53 @@ static void map_identity(struct MemoryMapEntry *entry)
 
     for (uint64_t i = 0; i < pages; ++i) {
         uint64_t addr = start + i * PAGE_SIZE_2MB;
-        uint64_t pdpt_index = (addr >> 30) & 0x1FF;
-        uint64_t pd_index   = (addr >> 21) & 0x1FF;
 
-        pds_low[pdpt_index][pd_index] = addr | PAGE_PRESENT | PAGE_RW | PAGE_PS;
-        pdpt_low[pdpt_index] = ((uint64_t)pds_low[pdpt_index]) | PAGE_PRESENT | PAGE_RW;
+        uint64_t pd_index   = (addr >> 21) & 0x1FF;
+        uint64_t pdpt_index = (addr >> 30) & 0x1FF;
+        uint64_t pml4_index = (addr >> 39) & 0x1FF;
+
+        kernel_pds_low[pdpt_index][pd_index] = addr | PAGE_PRESENT | PAGE_RW | PAGE_PS;
+        kernel_pdpt_low[pdpt_index] = ((uint64_t)kernel_pds_low[pdpt_index]) | PAGE_PRESENT | PAGE_RW;
+        kernel_pml4[pml4_index] = ((uint64_t)kernel_pdpt_low) | PAGE_PRESENT | PAGE_RW;
     }
 }
 
-static void map_virtual(struct MemoryMapEntry *entry)
+size_t map_virtual(struct MemoryMapEntry *entry, uint64_t pml4[512], uint64_t pdpt[512], uint64_t pds[PAGING_MAP_GIB][512])
 {
     // 2 MiB alignment
-    uint64_t addr_mod = entry->physical_start % PAGE_SIZE_2MB;
-    uint64_t phys_start = entry->physical_start - addr_mod + PAGE_SIZE_2MB;
-    size_t   size_bytes = entry->size_pages * PAGE_SIZE_4KB + addr_mod - PAGE_SIZE_2MB;
-    size_t   aligned_size = size_bytes - (size_bytes % PAGE_SIZE_2MB);
-    uint64_t virt_start = next_virtual_heap_addr;
+    uint64_t phys_mod = entry->physical_start % PAGE_SIZE_2MB;
+    uint64_t phys_start = entry->physical_start - phys_mod;
+
+    uint64_t virt_mod = entry->virtual_start % PAGE_SIZE_2MB;
+    uint64_t virt_start = entry->virtual_start - virt_mod;
+    if (virt_mod > 0) virt_start += PAGE_SIZE_2MB;
+
+    size_t size_bytes = entry->size_pages * PAGE_SIZE_4KB + phys_mod;
+    if (phys_mod > 0) {
+        phys_start += PAGE_SIZE_2MB;
+        size_bytes -= PAGE_SIZE_2MB;
+    }
+
+    size_t aligned_size = size_bytes - (size_bytes % PAGE_SIZE_2MB);
 
     for (size_t offset = 0; offset < aligned_size; offset += PAGE_SIZE_2MB) {
         uint64_t phys = phys_start + offset;
         uint64_t virt = virt_start + offset;
-        uint64_t pdpt_index = (virt >> 30) & 0x1FF;
+        
         uint64_t pd_index   = (virt >> 21) & 0x1FF;
+        uint64_t pdpt_index = (virt >> 30) & 0x1FF;
+        uint64_t pml4_index = (virt >> 39) & 0x1FF;
 
-        pds_high[pdpt_index][pd_index] = phys | PAGE_PRESENT | PAGE_RW | PAGE_PS;
-        pdpt_high[pdpt_index] = ((uint64_t)pds_high[pdpt_index]) | PAGE_PRESENT | PAGE_RW;
+        pds[pdpt_index][pd_index] = phys | PAGE_PRESENT | PAGE_RW | PAGE_PS;
+        pdpt[pdpt_index] = ((uint64_t)pds[pdpt_index]) | PAGE_PRESENT | PAGE_RW;
+        pml4[pml4_index] = ((uint64_t)pdpt) | PAGE_PRESENT | PAGE_RW;
     }
 
 #ifdef HLOS_DEBUG
     tty_printf("[Paging] Mapped %u bytes at virt 0x%x -> phys 0x%x\n", aligned_size, virt_start, phys_start);
 #endif
 
-    next_virtual_heap_addr += aligned_size;
+    return aligned_size;
 }
 
 void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_size)
@@ -87,7 +102,8 @@ void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_si
 
             case ConventionalMemory:
                 if (entry->size_pages >= HEAP_MIN_SIZE) {
-                    map_virtual(entry);
+                    entry->virtual_start = next_virtual_heap_addr;
+                    next_virtual_heap_addr += map_virtual(entry, kernel_pml4, kernel_pdpt_high, kernel_pds_high);
                 }
                 break;
 
@@ -96,14 +112,8 @@ void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_si
         }
     }
 
-    // Lower-half identity mapped
-    pml4[0] = ((uint64_t)pdpt_low) | PAGE_PRESENT | PAGE_RW;
-
-    // Higher-half contains conventional memory regions
-    pml4[256] = ((uint64_t)pdpt_high) | PAGE_PRESENT | PAGE_RW;
-
     // Enable paging
-    uint64_t pml4_phys = (uint64_t)pml4;
+    uint64_t pml4_phys = (uint64_t)kernel_pml4;
     uint64_t cr4_pae = (1 << 5);       // Enable PAE
     uint64_t cr0_pg  = 0x80000000;     // Enable paging
 

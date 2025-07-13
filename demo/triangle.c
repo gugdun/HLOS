@@ -83,10 +83,10 @@ void demo_triangle_tick(struct DemoTriangleState *state)
     );
 
     fb_present();
-    ksleep(16);
+    ksleep(1);
 
     // Update state
-    float new_angle = angle + 0.016f;
+    float new_angle = angle + 0.01f;
     if (new_angle > 2.0f * M_PI) {
         new_angle -= 2.0f * M_PI;
     }

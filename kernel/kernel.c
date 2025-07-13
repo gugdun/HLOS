@@ -30,7 +30,7 @@ void kernel_main(struct FramebufferParams fb_params, struct InitrdParams initrd_
     vfs_init();
     parse_initrd(&initrd_params);
     remap_pic();
-    setup_pit(1000);
+    setup_pit(100);
     enable_interrupts();
 
     struct DemoTriangleState state = demo_triangle_init();

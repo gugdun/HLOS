@@ -53,6 +53,7 @@ uint32_t fb_get_width(void);
 uint32_t fb_get_height(void);
 size_t fb_get_size(void);
 bool fb_is_initialized();
+bool fb_is_double_buffered();
 fb_color_t fb_color_rgb(float r, float g, float b);
 fb_color_t fb_color_rgba(float r, float g, float b, float a);
 void fb_clear(fb_color_t color);

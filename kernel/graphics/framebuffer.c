@@ -114,6 +114,11 @@ bool fb_is_initialized()
     return (fb_base != NULL && fb_size > 0);
 }
 
+bool fb_is_double_buffered()
+{
+    return fb_buffer != NULL;
+}
+
 fb_color_t fb_color_rgb(float r, float g, float b)
 {
     uint32_t r_channel;

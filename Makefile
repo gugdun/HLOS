@@ -1,6 +1,6 @@
 ARCH		:= x86_64
 TARGET		:= pei-x86-64
-TOOLCHAIN	:= $(HOME)/opt/$(ARCH)-hlos
+EFI_OUTPUT	:= out/BOOTX64.EFI
 
 GNU_EFI	:= gnu-efi
 EFI_INC := $(GNU_EFI)/inc
@@ -12,9 +12,10 @@ CPU		:= EPYC
 CORES	:= 2
 MEMORY	:= 4096
 
-CC      := $(TOOLCHAIN)/bin/$(ARCH)-elf-gcc
-LD		:= $(TOOLCHAIN)/bin/$(ARCH)-elf-ld
-OBJCOPY	:= $(TOOLCHAIN)/bin/$(ARCH)-pe-objcopy
+TOOLCHAIN	:= $(HOME)/opt/$(ARCH)-hlos
+CC      	:= $(TOOLCHAIN)/bin/$(ARCH)-elf-gcc
+LD			:= $(TOOLCHAIN)/bin/$(ARCH)-elf-ld
+OBJCOPY		:= $(TOOLCHAIN)/bin/$(ARCH)-pe-objcopy
 
 DEBUG	:= -DHLOS_DEBUG
 INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
@@ -32,14 +33,13 @@ DEMO_SRC	:= $(wildcard demo/*.c)
 DEMO_OBJ	:= $(patsubst demo/%.c, obj/demo/%.o, $(DEMO_SRC))
 
 OBJECTS		:= $(BOOT_OBJ) $(KERNEL_OBJ) $(LIB_OBJ) $(DEMO_OBJ)
-EFI_OUTPUT	:= out/BOOTX64.EFI
 
 all: $(EFI_OUTPUT)
 
 $(EFI_OUTPUT): $(OBJECTS)
 	@mkdir -p out
 	@echo "Linking $(EFI_OUTPUT)..."
-	@$(LD) $(LDFLAGS) -o out/kernel.so $(GNU_EFI)/$(ARCH)/gnuefi/crt0-efi-x86_64.o $(OBJECTS) -lgnuefi -lefi
+	@$(LD) $(LDFLAGS) -o out/kernel.so $(GNU_EFI)/$(ARCH)/gnuefi/crt0-efi-$(ARCH).o $(OBJECTS) -lgnuefi -lefi
 	@$(OBJCOPY) -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc \
 		--target $(TARGET) --subsystem=10 out/kernel.so $(EFI_OUTPUT)
 	@echo "Done!"
