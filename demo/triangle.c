@@ -5,7 +5,7 @@
 #include <xencore/arch/x86_64/paging.h>
 #endif
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 #include <xencore/timer/sleep.h>
 #include <xencore/xenmem/bitmap.h>
 

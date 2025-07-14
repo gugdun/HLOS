@@ -1,7 +1,7 @@
 #include <xencore/arch/x86_64/pic.h>
 #include <xencore/arch/x86_64/ports.h>
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 void remap_pic() {
     uint8_t a1 = inb(0x21); // Save masks

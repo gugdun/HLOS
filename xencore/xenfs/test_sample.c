@@ -1,5 +1,5 @@
-#include <xencore/fs/test_sample.h>
-#include <xencore/io/tty.h>
+#include <xencore/xenfs/test_sample.h>
+#include <xencore/xenio/tty.h>
 
 static uint8_t *sample_base = NULL;
 static size_t sample_size = 0;

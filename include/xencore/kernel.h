@@ -6,7 +6,7 @@
 #endif
 
 #include <xencore/graphics/framebuffer.h>
-#include <xencore/fs/test_sample.h>
+#include <xencore/xenfs/test_sample.h>
 
 void resonance_cascade(struct FramebufferParams fb_params, struct TestSampleParams sample_params, struct MemoryMapParams memmap_params);
 

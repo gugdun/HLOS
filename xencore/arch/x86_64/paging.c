@@ -2,7 +2,7 @@
 
 #include <xencore/arch/x86_64/paging.h>
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 #define PAGE_PRESENT  0x1
 #define PAGE_RW       0x2

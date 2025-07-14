@@ -1,7 +1,7 @@
 #ifndef _INTERRUPTS_H
 #define _INTERRUPTS_H
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 static inline void disable_interrupts()
 {

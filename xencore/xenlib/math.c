@@ -1,6 +1,6 @@
 #include <math.h>
 
-#include <xencore/lib/math.h>
+#include <xencore/xenlib/math.h>
 
 double lib_rad2deg(double radians) {
     return radians * (180.0 / M_PI);

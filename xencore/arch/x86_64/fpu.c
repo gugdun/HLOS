@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 void enable_fpu_sse(void) {
     uint64_t cr0, cr4;

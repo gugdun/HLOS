@@ -4,7 +4,7 @@
 #include <xencore/arch/x86_64/ports.h>
 #endif
 
-#include <xencore/io/serial.h>
+#include <xencore/xenio/serial.h>
 
 void serial_init(void) {
 #ifdef ARCH_x86_64

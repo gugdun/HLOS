@@ -2,7 +2,7 @@
 #include <xencore/arch/x86_64/ports.h>
 
 #include <xencore/graphics/framebuffer.h>
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 #include <xencore/common.h>
 
 // ==== Exception Handlers ====

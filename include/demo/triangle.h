@@ -1,7 +1,7 @@
 #ifndef _DEMO_TRIANGLE_H
 #define _DEMO_TRIANGLE_H
 
-#include <xencore/lib/math.h>
+#include <xencore/xenlib/math.h>
 #include <xencore/graphics/framebuffer.h>
 
 struct DemoTriangleState {

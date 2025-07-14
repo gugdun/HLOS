@@ -2,8 +2,8 @@
 
 #include <xencore/graphics/framebuffer.h>
 #include <xencore/graphics/fonts/8x8.h>
-#include <xencore/io/serial.h>
-#include <xencore/io/tty.h>
+#include <xencore/xenio/serial.h>
+#include <xencore/xenio/tty.h>
 
 static uint32_t tty_x = 0, tty_y = 0;
 static fb_color_t tty_fg = 0xFFFFFFFF, tty_bg = 0xFF000000;

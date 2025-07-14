@@ -1,7 +1,7 @@
 #include <xencore/arch/x86_64/gdt.h>
 #include <xencore/arch/x86_64/tss.h>
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 extern struct TSS tss;
 

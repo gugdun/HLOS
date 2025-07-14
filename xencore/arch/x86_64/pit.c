@@ -1,7 +1,7 @@
 #include <xencore/arch/x86_64/pit.h>
 #include <xencore/arch/x86_64/ports.h>
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 #define PIT_FREQUENCY 1193182
 #define PIT_COMMAND_PORT 0x43

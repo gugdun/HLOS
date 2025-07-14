@@ -1,6 +1,6 @@
 #include <xencore/arch/x86_64/tss.h>
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 __attribute__((aligned(16))) struct TSS tss;
 __attribute__((aligned(16))) uint8_t ist_stack[4096];

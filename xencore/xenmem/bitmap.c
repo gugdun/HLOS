@@ -5,7 +5,7 @@
 #endif
 
 #include <xencore/xenmem/bitmap.h>
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 extern uint64_t next_virtual_heap_addr;
 

@@ -3,7 +3,7 @@
 #include <xencore/arch/x86_64/ports.h>
 #include <xencore/arch/x86_64/pit.h>
 
-#include <xencore/io/tty.h>
+#include <xencore/xenio/tty.h>
 
 __attribute__((aligned(16))) struct IDTEntry idt[IDT_ENTRIES];
 struct IDTPtr idt_ptr;

@@ -3,8 +3,8 @@
 
 #include <xencore/graphics/framebuffer.h>
 #include <xencore/graphics/fonts/8x8.h>
-#include <xencore/io/serial.h>
-#include <xencore/io/tty.h>
+#include <xencore/xenio/serial.h>
+#include <xencore/xenio/tty.h>
 
 fb_color_t *fb_base   = (fb_color_t *)NULL;
 fb_color_t *fb_buffer = (fb_color_t *)NULL;
