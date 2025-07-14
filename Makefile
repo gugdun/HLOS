@@ -1,8 +1,7 @@
 ARCH		:= x86_64
 TARGET		:= pei-x86-64
 EFI_OUTPUT	:= out/BOOTX64.EFI
-SYSROOT		:= $(HOME)/hlos
-TOOLCHAIN	:= $(HOME)/opt/$(ARCH)-hlos
+SYSROOT		:= /opt/$(ARCH)-hlos
 
 GNU_EFI	:= gnu-efi
 EFI_INC := $(GNU_EFI)/inc
@@ -14,8 +13,8 @@ CPU		:= EPYC
 CORES	:= 2
 MEMORY	:= 4096
 
-CC      := $(TOOLCHAIN)/bin/$(ARCH)-hlos-gcc
-LD		:= $(TOOLCHAIN)/bin/$(ARCH)-hlos-ld
+CC      := $(SYSROOT)/bin/$(ARCH)-hlos-gcc
+LD		:= $(SYSROOT)/bin/$(ARCH)-hlos-ld
 OBJCOPY	:= $(ARCH)-w64-mingw32-objcopy
 
 DEBUG	:= -DHLOS_DEBUG
