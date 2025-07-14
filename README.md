@@ -17,8 +17,8 @@ You'll need to build a custom `binutils` and `gcc` cross-compiler targeting `x86
 ```bash
 mkdir -p $HOME/src
 cd $HOME/src
-git clone https://github.com/gugdun/binutils-hlos
-git clone https://github.com/gugdun/gcc-hlos
+git clone https://github.com/gugdun/hlos-binutils
+git clone https://github.com/gugdun/hlos-gcc
 ```
 
 ### Environment Variables
@@ -27,13 +27,13 @@ Before building, export these environment variables:
 
 ```bash
 export PREFIX="$HOME/opt/x86_64-hlos"
-export TARGET=x86_64-elf
+export TARGET=x86_64-hlos
 export PATH="$PREFIX/bin:$PATH"
 ```
 
 ## 🔧 Building the Toolchain
 
-### 1. Build `binutils` (x86\_64-elf)
+### 1. Build `binutils` (x86\_64-hlos)
 
 ```bash
 cd $HOME/src
@@ -48,7 +48,7 @@ make install
 
 Repeat the above process, replacing `--target=$TARGET` with `--target=x86_64-pe`.
 
-### 3. Build `GCC` (x86\_64-elf)
+### 3. Build `GCC` (x86\_64-hlos)
 
 ```bash
 cd $HOME/src

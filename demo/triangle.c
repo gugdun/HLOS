@@ -1,9 +1,13 @@
 #include <demo/triangle.h>
+#include <math.h>
 
-#include <kernel/io/tty.h>
-#include <kernel/timer/sleep.h>
-#include <kernel/memory/paging.h>
-#include <kernel/memory/bitmap.h>
+#ifdef ARCH_x86_64
+#include <xencore/arch/x86_64/paging.h>
+#endif
+
+#include <xencore/io/tty.h>
+#include <xencore/timer/sleep.h>
+#include <xencore/xenmem/bitmap.h>
 
 struct DemoTriangleState demo_triangle_init(void)
 {
@@ -50,8 +54,8 @@ void demo_triangle_tick(struct DemoTriangleState *state)
     const float angle = state->angle;
     matrix2x2 rotation_matrix = {
         .m = {
-            {lib_cos(angle), -lib_sin(angle)},
-            {lib_sin(angle), lib_cos(angle)}
+            {cos(angle), -sin(angle)},
+            {sin(angle),  cos(angle)}
         }
     };
 

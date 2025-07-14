@@ -1,6 +1,8 @@
 ARCH		:= x86_64
 TARGET		:= pei-x86-64
 EFI_OUTPUT	:= out/BOOTX64.EFI
+SYSROOT		:= $(HOME)/hlos
+TOOLCHAIN	:= $(HOME)/opt/$(ARCH)-hlos
 
 GNU_EFI	:= gnu-efi
 EFI_INC := $(GNU_EFI)/inc
@@ -12,62 +14,54 @@ CPU		:= EPYC
 CORES	:= 2
 MEMORY	:= 4096
 
-TOOLCHAIN	:= $(HOME)/opt/$(ARCH)-hlos
-CC      	:= $(TOOLCHAIN)/bin/$(ARCH)-elf-gcc
-LD			:= $(TOOLCHAIN)/bin/$(ARCH)-elf-ld
-OBJCOPY		:= $(TOOLCHAIN)/bin/$(ARCH)-pe-objcopy
+CC      := $(TOOLCHAIN)/bin/$(ARCH)-hlos-gcc
+LD		:= $(TOOLCHAIN)/bin/$(ARCH)-hlos-ld
+OBJCOPY	:= $(ARCH)-w64-mingw32-objcopy
 
 DEBUG	:= -DHLOS_DEBUG
-INCLUDE := -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude -Iinclude/lib
-LIBRARY := -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
-CFLAGS  := $(DEBUG) $(INCLUDE) -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone
-LDFLAGS := -shared -Bsymbolic -z noexecstack -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi -T$(GNU_EFI)/gnuefi/elf_$(ARCH)_efi.lds $(LIBRARY)
+DEFINES	:= $(DEBUG) -DARCH_$(ARCH)
+INCLUDE := -I$(SYSROOT)/usr/$(ARCH)-hlos/include -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude
+LIBRARY := -L$(SYSROOT)/usr/$(ARCH)-hlos/lib -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
+CFLAGS  := $(DEFINES) $(INCLUDE) -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone
+LDFLAGS := -shared -Bsymbolic -z noexecstack $(LIBRARY) -T$(GNU_EFI)/gnuefi/elf_$(ARCH)_efi.lds
 
-BOOT_SRC	:= $(wildcard boot/*.c)
-BOOT_OBJ	:= $(patsubst boot/%.c, obj/boot/%.o, $(BOOT_SRC))
-KERNEL_SRC	:= $(wildcard kernel/*.c kernel/cpu/*.c kernel/memory/*.c kernel/io/*.c kernel/graphics/*.c kernel/interrupts/*.c kernel/timer/*.c kernel/fs/*.c)
-KERNEL_OBJ	:= $(patsubst kernel/%.c, obj/kernel/%.o, $(KERNEL_SRC))
-LIB_SRC		:= $(wildcard lib/*.c)
-LIB_OBJ		:= $(patsubst lib/%.c, obj/lib/%.o, $(LIB_SRC))
-DEMO_SRC	:= $(wildcard demo/*.c)
-DEMO_OBJ	:= $(patsubst demo/%.c, obj/demo/%.o, $(DEMO_SRC))
-
-OBJECTS		:= $(BOOT_OBJ) $(KERNEL_OBJ) $(LIB_OBJ) $(DEMO_OBJ)
+ANOMALOUS_SRC	:= $(wildcard anomalous/*.c)
+ANOMALOUS_OBJ	:= $(patsubst anomalous/%.c, obj/anomalous/%.o, $(ANOMALOUS_SRC))
+XENCORE_SRC		:= $(wildcard xencore/*.c xencore/lib/*.c xencore/xenmem/*.c xencore/io/*.c xencore/graphics/*.c xencore/timer/*.c xencore/fs/*.c xencore/arch/$(ARCH)/*.c)
+XENCORE_OBJ		:= $(patsubst xencore/%.c, obj/xencore/%.o, $(XENCORE_SRC))
+DEMO_SRC		:= $(wildcard demo/*.c)
+DEMO_OBJ		:= $(patsubst demo/%.c, obj/demo/%.o, $(DEMO_SRC))
+OBJECTS			:= $(ANOMALOUS_OBJ) $(XENCORE_OBJ) $(DEMO_OBJ)
 
 all: $(EFI_OUTPUT)
 
 $(EFI_OUTPUT): $(OBJECTS)
 	@mkdir -p out
 	@echo "Linking $(EFI_OUTPUT)..."
-	@$(LD) $(LDFLAGS) -o out/kernel.so $(GNU_EFI)/$(ARCH)/gnuefi/crt0-efi-$(ARCH).o $(OBJECTS) -lgnuefi -lefi
+	@$(LD) $(LDFLAGS) -o out/xencore.so $(GNU_EFI)/$(ARCH)/gnuefi/crt0-efi-$(ARCH).o $(OBJECTS) -lc -lg -lm -lnosys -lgnuefi -lefi
 	@$(OBJCOPY) -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc \
-		--target $(TARGET) --subsystem=10 out/kernel.so $(EFI_OUTPUT)
+		--target $(TARGET) --subsystem=10 out/xencore.so $(EFI_OUTPUT)
 	@echo "Done!"
 
-obj/boot/%.o: boot/%.c
-	@mkdir -p obj/boot
+obj/anomalous/%.o: anomalous/%.c
+	@mkdir -p obj/anomalous
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-obj/kernel/interrupts/isrs.o: kernel/interrupts/isrs.c
-	@mkdir -p obj/kernel
+obj/xencore/arch/x86_64/isrs.o: xencore/arch/x86_64/isrs.c
+	@mkdir -p obj/xencore
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -mgeneral-regs-only -c $< -o $@
 
-obj/kernel/%.o: kernel/%.c
-	@mkdir -p obj/kernel
-	@mkdir -p obj/kernel/cpu
-	@mkdir -p obj/kernel/memory
-	@mkdir -p obj/kernel/graphics
-	@mkdir -p obj/kernel/io
-	@mkdir -p obj/kernel/timer
-	@mkdir -p obj/kernel/interrupts
-	@mkdir -p obj/kernel/fs
-	@echo "Compiling $<..."
-	@$(CC) $(CFLAGS) -c $< -o $@
-
-obj/lib/%.o: lib/%.c
-	@mkdir -p obj/lib
+obj/xencore/%.o: xencore/%.c
+	@mkdir -p obj/xencore
+	@mkdir -p obj/xencore/lib
+	@mkdir -p obj/xencore/xenmem
+	@mkdir -p obj/xencore/graphics
+	@mkdir -p obj/xencore/io
+	@mkdir -p obj/xencore/timer
+	@mkdir -p obj/xencore/fs
+	@mkdir -p obj/xencore/arch/$(ARCH)
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@
 
@@ -81,19 +75,19 @@ gnu-efi:
 	@make -C gnu-efi
 	@echo "Done!"
 
-initrd:
-	@echo "Building initrd..."
-	@tar --format=ustar -cf out/initrd.tar initrd
+test_sample:
+	@echo "Building test_sample..."
+	@tar --format=ustar -cf out/test_sample.tar test_sample
 	@echo "Done!"
 
-usb: $(EFI_OUTPUT) initrd
+usb: $(EFI_OUTPUT) test_sample
 	@echo "Building USB image..."
-	@dd if=/dev/zero of=out/usb.img bs=1k count=1440
-	@mformat -i out/usb.img -f 1440 ::
+	@dd if=/dev/zero of=out/usb.img bs=1M count=10
+	@mformat -i out/usb.img ::
 	@mmd -i out/usb.img ::/EFI
 	@mmd -i out/usb.img ::/EFI/BOOT
 	@mcopy -i out/usb.img $(EFI_OUTPUT) ::/EFI/BOOT
-	@mcopy -i out/usb.img out/initrd.tar ::/EFI/BOOT
+	@mcopy -i out/usb.img out/test_sample.tar ::/EFI/BOOT
 	@echo "Done!"
 
 qemu: usb
@@ -110,4 +104,4 @@ clean:
 	@rm -rf obj out
 	@echo "Done!"
 
-.PHONY: all initrd clean
+.PHONY: all test_sample clean

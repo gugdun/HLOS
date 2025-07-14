@@ -1,8 +1,8 @@
 #ifndef _DEMO_TRIANGLE_H
 #define _DEMO_TRIANGLE_H
 
-#include <math.h>
-#include <kernel/graphics/framebuffer.h>
+#include <xencore/lib/math.h>
+#include <xencore/graphics/framebuffer.h>
 
 struct DemoTriangleState {
     float angle;
