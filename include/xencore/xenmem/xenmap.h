@@ -1,7 +1,7 @@
-#ifndef _BITMAP_H
-#define _BITMAP_H
+#ifndef _XENMAP_H
+#define _XENMAP_H
 
-void bitmap_init(void);
+void xenmap_init(void);
 void *alloc_page(void);
 void free_page(void *page);
 

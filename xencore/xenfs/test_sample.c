@@ -28,16 +28,50 @@ static void parse_tar(const void *tar_start, size_t tar_size) {
         const void *file_data = ptr + TAR_BLOCK_SIZE;
 
         char *type_name = "unknown";
+        vfs_node_type_t vfs_type = VFS_NODE_DIR;
+
         switch (hdr->typeflag) {
-            case TAR_REGULAR_FILE: type_name = "regular file"; break;
-            case TAR_HARD_LINK: type_name = "hard link"; break;
-            case TAR_SYMBOLIC_LINK: type_name = "symbolic link"; break;
-            case TAR_CHARACTER_DEVICE: type_name = "character device"; break;
-            case TAR_BLOCK_DEVICE: type_name = "block device"; break;
-            case TAR_DIRECTORY: type_name = "directory"; break;
-            case TAR_FIFO: type_name = "FIFO"; break;
-            case TAR_CONTIGUOUS_FILE: type_name = "contiguous file"; break;
-            default: break;
+            case TAR_REGULAR_FILE:
+                type_name = "regular file";
+                vfs_type = VFS_NODE_FILE;
+                break;
+
+            case TAR_HARD_LINK:
+                type_name = "hard link";
+                vfs_type = VFS_NODE_SYMLINK;
+                break;
+
+            case TAR_SYMBOLIC_LINK:
+                type_name = "symbolic link";
+                vfs_type = VFS_NODE_SYMLINK;
+                break;
+                
+            case TAR_CHARACTER_DEVICE:
+                type_name = "character device";
+                vfs_type = VFS_NODE_FILE;
+                break;
+
+            case TAR_BLOCK_DEVICE:
+                type_name = "block device";
+                vfs_type = VFS_NODE_FILE;
+                break;
+
+            case TAR_DIRECTORY:
+                type_name = "directory";
+                break;
+
+            case TAR_FIFO:
+                type_name = "FIFO";
+                vfs_type = VFS_NODE_FILE;
+                break;
+
+            case TAR_CONTIGUOUS_FILE:
+                type_name = "contiguous file";
+                vfs_type = VFS_NODE_FILE;
+                break;
+
+            default:
+                break;
         }
 
         if (file_size > tar_size - (ptr - (const uint8_t *)tar_start) - TAR_BLOCK_SIZE) {
@@ -52,22 +86,31 @@ static void parse_tar(const void *tar_start, size_t tar_size) {
             file_size
         );
 
-        // Add file to VFS
+        // Add node to VFS
+        size_t link_size = 0;
         char path[256] = "/";
         strcpy(&path[1], hdr->name);
-        
-        vfs_node_type_t type = VFS_NODE_DIR;
-        switch (hdr->typeflag) {
-            case TAR_REGULAR_FILE: type = VFS_NODE_FILE; break;
-            case TAR_SYMBOLIC_LINK: type = VFS_NODE_SYMLINK; break;
-            default: break;
-        }
-        vfs_create(path, type);
-        
+        vfs_create(path, vfs_type);
         vfs_node_t *node = vfs_lookup(path);
-        if (node->type == VFS_NODE_FILE) {
-            node->file.data = (void *)file_data;
-            node->file.size = file_size;
+
+        switch (node->type) {
+            case VFS_NODE_FILE:
+                node->file.size = file_size;
+                node->file.data = (void *)vfs_alloc(file_size + 1);
+                ((uint8_t *)node->file.data)[file_size] = 0;
+                memcpy(node->file.data, file_data, file_size);
+                break;
+            
+            case VFS_NODE_SYMLINK:
+                link_size = strlen(hdr->linkname) + 1;
+                node->symlink.target = (char *)vfs_alloc(link_size + 1);
+                node->symlink.target[0] = '/';
+                node->symlink.target[link_size] = 0;
+                memcpy(&node->symlink.target[1], hdr->linkname, link_size - 1);
+                break;
+            
+            default:
+                break;
         }
 
         // Advance pointer: header + file data (rounded up to 512)

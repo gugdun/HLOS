@@ -7,7 +7,7 @@
 
 #include <xencore/xenio/tty.h>
 #include <xencore/timer/sleep.h>
-#include <xencore/xenmem/bitmap.h>
+#include <xencore/xenmem/xenmap.h>
 
 struct DemoTriangleState demo_triangle_init(void)
 {

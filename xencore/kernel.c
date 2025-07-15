@@ -13,7 +13,7 @@
 #include <xencore/xenio/serial.h>
 #include <xencore/xenio/tty.h>
 #include <xencore/graphics/framebuffer.h>
-#include <xencore/xenmem/bitmap.h>
+#include <xencore/xenmem/xenmap.h>
 #include <xencore/xenfs/vfs.h>
 #include <xencore/xenfs/test_sample.h>
 #include <xencore/timer/sleep.h>
@@ -36,18 +36,9 @@ void resonance_cascade(struct FramebufferParams fb_params, struct TestSamplePara
     enable_interrupts();
 #endif
 
-    bitmap_init();
+    xenmap_init();
     vfs_init();
     analyse_test_sample(&sample_params);
-
-    // VFS test
-    vfs_node_t *node = vfs_lookup("/test_sample/config.cfg");
-    if (node != NULL) {
-        tty_printf(
-            "[VFS Test] Found /test_sample/config.cfg! Content:\n%s\n",
-            node->file.data
-        );
-    }
 
     struct DemoTriangleState state = demo_triangle_init();
     while (1) demo_triangle_tick(&state);

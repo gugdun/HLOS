@@ -6,7 +6,7 @@
 
 #include <xencore/xenfs/vfs.h>
 #include <xencore/xenio/tty.h>
-#include <xencore/xenmem/bitmap.h>
+#include <xencore/xenmem/xenmap.h>
 
 typedef struct vfs_block {
     size_t size;
@@ -23,46 +23,6 @@ static vfs_page_t *vfs_pages = (vfs_page_t *)NULL;
 static vfs_block_t *vfs_free_list = (vfs_block_t *)NULL;
 
 static vfs_node_t *vfs_root = (vfs_node_t *)NULL;
-
-static void *vfs_alloc(size_t size)
-{
-    // Align to 8 bytes
-    size = (size + 7) & ~7;
-    size_t total = size + sizeof(vfs_block_t);
-
-    // Check free list
-    vfs_block_t **prev = &vfs_free_list;
-    for (vfs_block_t *block = vfs_free_list; block; block = block->next) {
-        if (block->size >= size) {
-            *prev = block->next;
-            return (void *)(block + 1);
-        }
-        prev = &block->next;
-    }
-
-    // Bump allocation
-    if (!vfs_pages || (vfs_pages->used + total > sizeof(vfs_pages->data))) {
-        vfs_page_t *new_page = (vfs_page_t *)alloc_page();
-        if (!new_page) return NULL;
-        new_page->next = vfs_pages;
-        new_page->used = 0;
-        vfs_pages = new_page;
-    }
-
-    vfs_block_t *block = (vfs_block_t *)&vfs_pages->data[vfs_pages->used];
-    block->size = size;
-    vfs_pages->used += total;
-
-    return (void *)(block + 1);
-}
-
-static void vfs_free(void *ptr)
-{
-    if (!ptr) return;
-    vfs_block_t *block = (vfs_block_t *)ptr - 1;
-    block->next = vfs_free_list;
-    vfs_free_list = block;
-}
 
 static void vfs_add_child(vfs_node_t *parent, vfs_node_t *child)
 {
@@ -110,6 +70,46 @@ static void vfs_free_node(vfs_node_t *node) {
     }
 
     vfs_free(node);
+}
+
+void *vfs_alloc(size_t size)
+{
+    // Align to 8 bytes
+    size = (size + 7) & ~7;
+    size_t total = size + sizeof(vfs_block_t);
+
+    // Check free list
+    vfs_block_t **prev = &vfs_free_list;
+    for (vfs_block_t *block = vfs_free_list; block; block = block->next) {
+        if (block->size >= size) {
+            *prev = block->next;
+            return (void *)(block + 1);
+        }
+        prev = &block->next;
+    }
+
+    // Bump allocation
+    if (!vfs_pages || (vfs_pages->used + total > sizeof(vfs_pages->data))) {
+        vfs_page_t *new_page = (vfs_page_t *)alloc_page();
+        if (!new_page) return NULL;
+        new_page->next = vfs_pages;
+        new_page->used = 0;
+        vfs_pages = new_page;
+    }
+
+    vfs_block_t *block = (vfs_block_t *)&vfs_pages->data[vfs_pages->used];
+    block->size = size;
+    vfs_pages->used += total;
+
+    return (void *)(block + 1);
+}
+
+void vfs_free(void *ptr)
+{
+    if (!ptr) return;
+    vfs_block_t *block = (vfs_block_t *)ptr - 1;
+    block->next = vfs_free_list;
+    vfs_free_list = block;
 }
 
 vfs_node_t *vfs_create(const char *path, vfs_node_type_t type) {
