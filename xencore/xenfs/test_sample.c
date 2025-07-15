@@ -1,4 +1,7 @@
+#include <string.h>
+
 #include <xencore/xenfs/test_sample.h>
+#include <xencore/xenfs/vfs.h>
 #include <xencore/xenio/tty.h>
 
 static uint8_t *sample_base = NULL;
@@ -26,14 +29,14 @@ static void parse_tar(const void *tar_start, size_t tar_size) {
 
         char *type_name = "unknown";
         switch (hdr->typeflag) {
-            case '0': type_name = "regular file"; break;
-            case '1': type_name = "hard link"; break;
-            case '2': type_name = "symbolic link"; break;
-            case '3': type_name = "character device"; break;
-            case '4': type_name = "block device"; break;
-            case '5': type_name = "directory"; break;
-            case '6': type_name = "FIFO"; break;
-            case '7': type_name = "contiguous file"; break;
+            case TAR_REGULAR_FILE: type_name = "regular file"; break;
+            case TAR_HARD_LINK: type_name = "hard link"; break;
+            case TAR_SYMBOLIC_LINK: type_name = "symbolic link"; break;
+            case TAR_CHARACTER_DEVICE: type_name = "character device"; break;
+            case TAR_BLOCK_DEVICE: type_name = "block device"; break;
+            case TAR_DIRECTORY: type_name = "directory"; break;
+            case TAR_FIFO: type_name = "FIFO"; break;
+            case TAR_CONTIGUOUS_FILE: type_name = "contiguous file"; break;
             default: break;
         }
 
@@ -49,7 +52,23 @@ static void parse_tar(const void *tar_start, size_t tar_size) {
             file_size
         );
 
-        // TODO: add file to VFS
+        // Add file to VFS
+        char path[256] = "/";
+        strcpy(&path[1], hdr->name);
+        
+        vfs_node_type_t type = VFS_NODE_DIR;
+        switch (hdr->typeflag) {
+            case TAR_REGULAR_FILE: type = VFS_NODE_FILE; break;
+            case TAR_SYMBOLIC_LINK: type = VFS_NODE_SYMLINK; break;
+            default: break;
+        }
+        vfs_create(path, type);
+        
+        vfs_node_t *node = vfs_lookup(path);
+        if (node->type == VFS_NODE_FILE) {
+            node->file.data = (void *)file_data;
+            node->file.size = file_size;
+        }
 
         // Advance pointer: header + file data (rounded up to 512)
         size_t file_blocks = (file_size + TAR_BLOCK_SIZE - 1) / TAR_BLOCK_SIZE;

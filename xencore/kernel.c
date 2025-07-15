@@ -40,6 +40,15 @@ void resonance_cascade(struct FramebufferParams fb_params, struct TestSamplePara
     vfs_init();
     analyse_test_sample(&sample_params);
 
+    // VFS test
+    vfs_node_t *node = vfs_lookup("/test_sample/config.cfg");
+    if (node != NULL) {
+        tty_printf(
+            "[VFS Test] Found /test_sample/config.cfg! Content:\n%s\n",
+            node->file.data
+        );
+    }
+
     struct DemoTriangleState state = demo_triangle_init();
     while (1) demo_triangle_tick(&state);
 }
