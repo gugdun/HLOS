@@ -6,21 +6,7 @@
 
 #include <xencore/xenfs/vfs.h>
 #include <xencore/xenio/tty.h>
-#include <xencore/xenmem/xenmap.h>
-
-typedef struct vfs_block {
-    size_t size;
-    struct vfs_block *next;
-} vfs_block_t;
-
-typedef struct vfs_page {
-    struct vfs_page *next;
-    size_t used;
-    uint8_t data[PAGE_SIZE_2MB - sizeof(struct vfs_page *) - sizeof(size_t)];
-} vfs_page_t;
-
-static vfs_page_t *vfs_pages = (vfs_page_t *)NULL;
-static vfs_block_t *vfs_free_list = (vfs_block_t *)NULL;
+#include <xencore/xenmem/xenalloc.h>
 
 static vfs_node_t *vfs_root = (vfs_node_t *)NULL;
 
@@ -28,11 +14,11 @@ static void vfs_add_child(vfs_node_t *parent, vfs_node_t *child)
 {
     size_t new_count = parent->dir.child_count + 1;
     size_t new_size = new_count * sizeof(vfs_node_t *);
-    vfs_node_t **new_array = vfs_alloc(new_size);
+    vfs_node_t **new_array = xen_alloc(new_size);
 
     if (parent->dir.child_count > 0) {
         memcpy(new_array, parent->dir.children, parent->dir.child_count * sizeof(vfs_node_t *));
-        vfs_free(parent->dir.children);
+        xen_free(parent->dir.children);
     }
 
     new_array[parent->dir.child_count] = child;
@@ -53,63 +39,23 @@ static vfs_node_t *vfs_find_child(vfs_node_t *parent, const char *name)
     return NULL;
 }
 
-static void vfs_free_node(vfs_node_t *node) {
+static void xen_free_node(vfs_node_t *node) {
     if (!node) return;
 
-    vfs_free(node->name);
+    xen_free(node->name);
 
     if (node->type == VFS_NODE_DIR) {
         for (size_t i = 0; i < node->dir.child_count; i++) {
-            vfs_free_node(node->dir.children[i]);
+            xen_free_node(node->dir.children[i]);
         }
-        vfs_free(node->dir.children);
+        xen_free(node->dir.children);
     } else if (node->type == VFS_NODE_FILE) {
-        vfs_free(node->file.data);
+        xen_free(node->file.data);
     } else if (node->type == VFS_NODE_SYMLINK) {
-        vfs_free(node->symlink.target);
+        xen_free(node->symlink.target);
     }
 
-    vfs_free(node);
-}
-
-void *vfs_alloc(size_t size)
-{
-    // Align to 8 bytes
-    size = (size + 7) & ~7;
-    size_t total = size + sizeof(vfs_block_t);
-
-    // Check free list
-    vfs_block_t **prev = &vfs_free_list;
-    for (vfs_block_t *block = vfs_free_list; block; block = block->next) {
-        if (block->size >= size) {
-            *prev = block->next;
-            return (void *)(block + 1);
-        }
-        prev = &block->next;
-    }
-
-    // Bump allocation
-    if (!vfs_pages || (vfs_pages->used + total > sizeof(vfs_pages->data))) {
-        vfs_page_t *new_page = (vfs_page_t *)alloc_page();
-        if (!new_page) return NULL;
-        new_page->next = vfs_pages;
-        new_page->used = 0;
-        vfs_pages = new_page;
-    }
-
-    vfs_block_t *block = (vfs_block_t *)&vfs_pages->data[vfs_pages->used];
-    block->size = size;
-    vfs_pages->used += total;
-
-    return (void *)(block + 1);
-}
-
-void vfs_free(void *ptr)
-{
-    if (!ptr) return;
-    vfs_block_t *block = (vfs_block_t *)ptr - 1;
-    block->next = vfs_free_list;
-    vfs_free_list = block;
+    xen_free(node);
 }
 
 vfs_node_t *vfs_create(const char *path, vfs_node_type_t type) {
@@ -131,8 +77,8 @@ vfs_node_t *vfs_create(const char *path, vfs_node_type_t type) {
             // Final component — create node if not found
             if (child) return child;
 
-            vfs_node_t *node = vfs_alloc(sizeof(vfs_node_t));
-            node->name = vfs_alloc(strlen(token) + 1);
+            vfs_node_t *node = xen_alloc(sizeof(vfs_node_t));
+            node->name = xen_alloc(strlen(token) + 1);
             strcpy(node->name, token);
             node->type = type;
             node->parent = current;
@@ -149,8 +95,8 @@ vfs_node_t *vfs_create(const char *path, vfs_node_type_t type) {
         // Intermediate component — must be directory
         if (!child) {
             // Create missing intermediate directory
-            child = vfs_alloc(sizeof(vfs_node_t));
-            child->name = vfs_alloc(strlen(token) + 1);
+            child = xen_alloc(sizeof(vfs_node_t));
+            child->name = xen_alloc(strlen(token) + 1);
             strcpy(child->name, token);
             child->type = VFS_NODE_DIR;
             child->parent = current;
@@ -232,16 +178,16 @@ bool vfs_remove(const char *path) {
             current->dir.child_count--;
             if (current->dir.child_count > 0) {
                 size_t new_size = current->dir.child_count * sizeof(vfs_node_t *);
-                vfs_node_t **new_array = vfs_alloc(new_size);
+                vfs_node_t **new_array = xen_alloc(new_size);
                 memcpy(new_array, current->dir.children, new_size);
-                vfs_free(current->dir.children);
+                xen_free(current->dir.children);
                 current->dir.children = new_array;
             } else {
-                vfs_free(current->dir.children);
+                xen_free(current->dir.children);
                 current->dir.children = NULL;
             }
 
-            vfs_free_node(child);
+            xen_free_node(child);
             return true;
         }
 
@@ -255,8 +201,8 @@ bool vfs_remove(const char *path) {
 
 void vfs_init()
 {
-    vfs_root = vfs_alloc(sizeof(vfs_node_t));
-    vfs_root->name = vfs_alloc(2);
+    vfs_root = xen_alloc(sizeof(vfs_node_t));
+    vfs_root->name = xen_alloc(2);
     strcpy(vfs_root->name, "/");
     vfs_root->type = VFS_NODE_DIR;
     vfs_root->parent = NULL;

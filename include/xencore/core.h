@@ -1,5 +1,5 @@
-#ifndef _KERNEL_H
-#define _KERNEL_H
+#ifndef _CORE_H
+#define _CORE_H
 
 #ifdef ARCH_x86_64
 #include <xencore/arch/x86_64/paging.h>

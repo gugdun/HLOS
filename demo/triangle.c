@@ -1,32 +1,18 @@
-#include <demo/triangle.h>
 #include <math.h>
 
-#ifdef ARCH_x86_64
-#include <xencore/arch/x86_64/paging.h>
-#endif
+#include <demo/triangle.h>
 
 #include <xencore/xenio/tty.h>
 #include <xencore/timer/sleep.h>
-#include <xencore/xenmem/xenmap.h>
+#include <xencore/xenmem/xenalloc.h>
 
 struct DemoTriangleState demo_triangle_init(void)
 {
-    // Enable double-buffering
-    if (fb_get_size() > 0) {
-        bool fail = false;
-        void *fb_buffer = alloc_page();
-        if (fb_buffer == NULL) fail = true;
-        
-        size_t fb_pages = fb_get_size() / PAGE_SIZE_2MB;
-        for (size_t i = 0; i < fb_pages; ++i) {
-            void *page = alloc_page();
-            if (page == NULL) {
-                fail = true;
-                break;
-            }
-        }
-
-        if (!fail) {
+    // Try to enable double-buffering
+    size_t fb_size = fb_get_size();
+    if (fb_size > 0) {
+        void *fb_buffer = xen_alloc(fb_size);
+        if (fb_buffer) {
             fb_init_buffer(fb_buffer);
         } else {
             tty_printf("[Kernel] Failed to allocate memory for double-buffering.\n");

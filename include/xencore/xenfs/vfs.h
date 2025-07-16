@@ -33,8 +33,6 @@ typedef struct vfs_node {
 } vfs_node_t;
 
 void vfs_init(void);
-void *vfs_alloc(size_t size);
-void vfs_free(void *ptr);
 vfs_node_t *vfs_create(const char *path, vfs_node_type_t type);
 vfs_node_t *vfs_lookup(const char *path);
 bool vfs_remove(const char *path);

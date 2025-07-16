@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include <xencore/xenfs/test_sample.h>
+#include <xencore/xenmem/xenalloc.h>
 #include <xencore/xenfs/vfs.h>
 #include <xencore/xenio/tty.h>
 
@@ -96,14 +97,14 @@ static void parse_tar(const void *tar_start, size_t tar_size) {
         switch (node->type) {
             case VFS_NODE_FILE:
                 node->file.size = file_size;
-                node->file.data = (void *)vfs_alloc(file_size + 1);
+                node->file.data = (void *)xen_alloc(file_size + 1);
                 ((uint8_t *)node->file.data)[file_size] = 0;
                 memcpy(node->file.data, file_data, file_size);
                 break;
             
             case VFS_NODE_SYMLINK:
                 link_size = strlen(hdr->linkname) + 1;
-                node->symlink.target = (char *)vfs_alloc(link_size + 1);
+                node->symlink.target = (char *)xen_alloc(link_size + 1);
                 node->symlink.target[0] = '/';
                 node->symlink.target[link_size] = 0;
                 memcpy(&node->symlink.target[1], hdr->linkname, link_size - 1);
