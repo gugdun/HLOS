@@ -7,15 +7,19 @@
 #include <xencore/xenmem/xenmap.h>
 #include <xencore/xenio/tty.h>
 
+#define MAP_GIB     2048
+#define MAP_PAGES   (MAP_GIB * 512)     // 1 page = 2 MiB, 1 GiB = 512 pages
+#define BITMAP_SIZE (MAP_PAGES / 64)    // 1 bit per 64 KiB page
+
 extern uint64_t next_virtual_heap_addr;
 
-static uint64_t page_xenmap[MAX_PAGES / 64]; // 1 bit per page
+static uint64_t page_xenmap[BITMAP_SIZE];
 static size_t   total_pages = 0;
 
 void xenmap_init()
 {
     total_pages = (next_virtual_heap_addr - VIRT_HEAP_BASE) / PAGE_SIZE_2MB;
-    memset((void *)page_xenmap, 0, MAX_PAGES / 8);
+    memset((void *)page_xenmap, 0, sizeof(page_xenmap));
     tty_printf("[Xenmap] Total pages: %u\n", total_pages);
 }
 

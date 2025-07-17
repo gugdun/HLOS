@@ -93,7 +93,7 @@ test_sample: hazardous
 
 usb: $(EFI_OUTPUT) test_sample
 	@echo "Building USB image..."
-	@dd if=/dev/zero of=out/usb.img bs=1M count=10
+	@dd if=/dev/zero of=out/usb.img bs=1K count=1440
 	@mformat -i out/usb.img ::
 	@mmd -i out/usb.img ::/EFI
 	@mmd -i out/usb.img ::/EFI/BOOT
