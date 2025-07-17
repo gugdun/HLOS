@@ -50,7 +50,7 @@ $HOME/opt/x86_64-hlos
 mkdir build-binutils && cd build-binutils
 ../hlos-binutils/configure \
   --target=x86_64-hlos \
-  --prefix=$HOME/opt \
+  --prefix=$HOME/opt/x86_64-hlos \
   --with-sysroot=$HOME/opt/x86_64-hlos \
   --disable-werror
 make -j$(nproc)
@@ -63,7 +63,7 @@ make install
 mkdir ../build-gcc && cd ../build-gcc
 ../hlos-gcc/configure \
   --target=x86_64-hlos \
-  --prefix=$HOME/opt \
+  --prefix=$HOME/opt/x86_64-hlos \
   --with-sysroot=$HOME/opt/x86_64-hlos \
   --enable-languages=c
 make -j$(nproc) all-gcc all-target-libgcc
@@ -104,7 +104,7 @@ ln -s $HOME/opt/x86_64-hlos/usr/x86_64-hlos/lib \
 Make sure the following packages are installed:
 
 * `gcc-mingw-w64` – for generating PE files from ELF (UEFI bootloader)
-* `tar` – for building `initrd`
+* `tar` – for building `test_sample`
 * `mtools` – for generating bootable USB images
 * `qemu-system-x86`, `ovmf` – for QEMU testing
 
@@ -124,10 +124,10 @@ make gnu-efi
 make
 ```
 
-* Build the `initrd`:
+* Build the `test_sample`:
 
 ```bash
-make initrd
+make test_sample
 ```
 
 * Run in QEMU:

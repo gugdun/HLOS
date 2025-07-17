@@ -26,11 +26,13 @@ LDFLAGS := -shared -Bsymbolic -z noexecstack $(LIBRARY) -T$(GNU_EFI)/gnuefi/elf_
 
 ANOMALOUS_SRC	:= $(wildcard anomalous/*.c)
 ANOMALOUS_OBJ	:= $(patsubst anomalous/%.c, obj/anomalous/%.o, $(ANOMALOUS_SRC))
-XENCORE_SRC		:= $(wildcard xencore/*.c xencore/xenlib/*.c xencore/xenmem/*.c xencore/xenio/*.c xencore/graphics/*.c xencore/timer/*.c xencore/xenfs/*.c xencore/arch/$(ARCH)/*.c)
+XENCORE_SRC		:= $(wildcard xencore/*.c xencore/exec/*.c xencore/xenlib/*.c xencore/xenmem/*.c xencore/xenio/*.c xencore/graphics/*.c xencore/timer/*.c xencore/xenfs/*.c xencore/arch/$(ARCH)/*.c)
 XENCORE_OBJ		:= $(patsubst xencore/%.c, obj/xencore/%.o, $(XENCORE_SRC))
 DEMO_SRC		:= $(wildcard demo/*.c)
 DEMO_OBJ		:= $(patsubst demo/%.c, obj/demo/%.o, $(DEMO_SRC))
 OBJECTS			:= $(ANOMALOUS_OBJ) $(XENCORE_OBJ) $(DEMO_OBJ)
+
+export ARCH SYSROOT CC
 
 all: $(EFI_OUTPUT)
 
@@ -54,6 +56,7 @@ obj/xencore/arch/x86_64/isrs.o: xencore/arch/x86_64/isrs.c
 
 obj/xencore/%.o: xencore/%.c
 	@mkdir -p obj/xencore
+	@mkdir -p obj/xencore/exec
 	@mkdir -p obj/xencore/xenmem
 	@mkdir -p obj/xencore/xenlib
 	@mkdir -p obj/xencore/xenio
@@ -74,9 +77,18 @@ gnu-efi:
 	@make -C gnu-efi
 	@echo "Done!"
 
-test_sample:
+hazardous:
+	@echo "Building hazardous materials..."
+	@mkdir -p out
+	@make -C hazardous
+	@echo "Done!"
+
+test_sample: hazardous
 	@echo "Building test_sample..."
+	@mkdir -p out
 	@tar --format=ustar -cf out/test_sample.tar test_sample
+	@tar --append --file=out/test_sample.tar --transform='s|^|test_sample/|' \
+		-C out $(patsubst out/%.elf, %.elf, $(wildcard out/*.elf))
 	@echo "Done!"
 
 usb: $(EFI_OUTPUT) test_sample
@@ -103,4 +115,4 @@ clean:
 	@rm -rf obj out
 	@echo "Done!"
 
-.PHONY: all test_sample clean
+.PHONY: all hazardous test_sample clean

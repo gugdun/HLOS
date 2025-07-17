@@ -9,17 +9,15 @@
 #define PAGE_PS       (1 << 7)  // Use 2 MiB pages
 #define HEAP_MIN_SIZE 512       // In 4 KiB pages
 
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pml4[512];
-
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pdpt_low[512];
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pds_low[PAGING_MAP_GIB][512];  // one PD per GiB
-
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pdpt_high[512];
-__attribute__((aligned(PAGE_SIZE_4KB))) static uint64_t kernel_pds_high[PAGING_MAP_GIB][512]; // one PD per GiB
+__attribute__((aligned(PAGE_SIZE_4KB))) uint64_t kernel_pml4[512];
+__attribute__((aligned(PAGE_SIZE_4KB))) uint64_t kernel_pdpt_low[512];
+__attribute__((aligned(PAGE_SIZE_4KB))) uint64_t kernel_pds_low[PAGING_MAP_GIB][512];
+__attribute__((aligned(PAGE_SIZE_4KB))) uint64_t kernel_pdpt_high[512];
+__attribute__((aligned(PAGE_SIZE_4KB))) uint64_t kernel_pds_high[PAGING_MAP_GIB][512];
 
 uint64_t next_virtual_heap_addr = VIRT_HEAP_BASE;
 
-static void map_identity(struct MemoryMapEntry *entry)
+void map_identity(struct MemoryMapEntry *entry)
 {
     uint64_t start = entry->physical_start - (entry->physical_start % PAGE_SIZE_2MB);
     size_t   pages = (entry->size_pages / (uint64_t)(PAGE_SIZE_2MB / PAGE_SIZE_4KB)) + 1;
@@ -39,21 +37,12 @@ static void map_identity(struct MemoryMapEntry *entry)
 
 size_t map_virtual(struct MemoryMapEntry *entry, uint64_t pml4[512], uint64_t pdpt[512], uint64_t pds[PAGING_MAP_GIB][512])
 {
-    // 2 MiB alignment
-    uint64_t phys_mod = entry->physical_start % PAGE_SIZE_2MB;
-    uint64_t phys_start = entry->physical_start - phys_mod;
-
-    uint64_t virt_mod = entry->virtual_start % PAGE_SIZE_2MB;
-    uint64_t virt_start = entry->virtual_start - virt_mod;
-    if (virt_mod > 0) virt_start += PAGE_SIZE_2MB;
-
-    size_t size_bytes = entry->size_pages * PAGE_SIZE_4KB + phys_mod;
-    if (phys_mod > 0) {
-        phys_start += PAGE_SIZE_2MB;
-        size_bytes -= PAGE_SIZE_2MB;
-    }
-
-    size_t aligned_size = size_bytes - (size_bytes % PAGE_SIZE_2MB);
+    const uint64_t phys_mod     = entry->physical_start % PAGE_SIZE_2MB;
+    const uint64_t phys_start   = entry->physical_start - phys_mod;
+    const uint64_t virt_mod     = entry->virtual_start % PAGE_SIZE_2MB;
+    const uint64_t virt_start   = entry->virtual_start - virt_mod;
+    const size_t   size_bytes   = entry->size_pages * PAGE_SIZE_4KB + phys_mod;
+    const size_t   aligned_size = (size_bytes + PAGE_SIZE_2MB - 1) / PAGE_SIZE_2MB * PAGE_SIZE_2MB;
 
     for (size_t offset = 0; offset < aligned_size; offset += PAGE_SIZE_2MB) {
         uint64_t phys = phys_start + offset;

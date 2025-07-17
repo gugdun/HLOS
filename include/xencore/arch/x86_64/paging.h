@@ -17,6 +17,17 @@ struct MemoryMapParams {
     size_t descriptor_size;
 };
 
+static inline void load_pml4(uint64_t pml4_phys)
+{
+    __asm__ volatile (
+        "mov %0, %%cr3\n"
+        :
+        : "r"(pml4_phys)
+        : "memory"
+    );
+}
+
+void map_identity(struct MemoryMapEntry *entry);
 size_t map_virtual(struct MemoryMapEntry *entry, uint64_t pml4[512], uint64_t pdpt[512], uint64_t pds[PAGING_MAP_GIB][512]);
 void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_size);
 

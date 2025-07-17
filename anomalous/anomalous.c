@@ -1,3 +1,16 @@
+/*-----------------------------------------------------------------------------------------------------------------------------------------------------------------*\
+|                                                                                                                                                                   |
+|     █████╗ ███╗   ██╗ ██████╗ ███╗   ███╗ █████╗ ██╗      ██████╗ ██╗   ██╗███████╗    ███╗   ███╗ █████╗ ████████╗███████╗██████╗ ██╗ █████╗ ██╗     ███████╗    |
+|    ██╔══██╗████╗  ██║██╔═══██╗████╗ ████║██╔══██╗██║     ██╔═══██╗██║   ██║██╔════╝    ████╗ ████║██╔══██╗╚══██╔══╝██╔════╝██╔══██╗██║██╔══██╗██║     ██╔════╝    |
+|    ███████║██╔██╗ ██║██║   ██║██╔████╔██║███████║██║     ██║   ██║██║   ██║███████╗    ██╔████╔██║███████║   ██║   █████╗  ██████╔╝██║███████║██║     ███████╗    |
+|    ██╔══██║██║╚██╗██║██║   ██║██║╚██╔╝██║██╔══██║██║     ██║   ██║██║   ██║╚════██║    ██║╚██╔╝██║██╔══██║   ██║   ██╔══╝  ██╔══██╗██║██╔══██║██║     ╚════██║    |
+|    ██║  ██║██║ ╚████║╚██████╔╝██║ ╚═╝ ██║██║  ██║███████╗╚██████╔╝╚██████╔╝███████║    ██║ ╚═╝ ██║██║  ██║   ██║   ███████╗██║  ██║██║██║  ██║███████╗███████║    |
+|    ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝ ╚══════╝    ╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚══════╝╚══════╝    |
+|                                                                                                                                                                   |
+|    We’ve just sent the sample down to the test chamber...                                                                                                         |
+|                                                                                                                                                                   |
+\*-----------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
 #include <efi.h>
 #include <efilib.h>
 
@@ -41,11 +54,12 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     Print(L"[Anomalous Materials] Injecting sample into analysis chamber...\r\n");
     uefi_call_wrapper(SystemTable->BootServices->ExitBootServices, 2, ImageHandle, map_key);
 
-    // Scientist A: "A resonance cascade scenario is extremely unlikely."
-    // Scientist B: "Gordon doesn't need to hear all this. He's a highly trained professional."
-    // Scientist A: "We've assured the administrator that nothing will go wrong."
-    // Scientist B: "Ah yes, you're right. Gordon, we have complete confidence in you."
-    // Scientist A: "Well, go ahead. Let's not delay this any further."
+    // - Although I will admit that the possibility of a resonance cascade scenario
+    //   is extremely unlikely, I remain uncomfortable with the...
+    // - Gordon doesn't need to hear all this. He's a highly trained professional.
+    //   We've assured the administrator that nothing will go wrong.
+    // - Ah yes, you're right. Gordon, we have complete confidence in you.
+    // - Well, go ahead. Let's let him in now...
     resonance_cascade(fb_params, sample_params, memmap_params);
 
     return EFI_SUCCESS;

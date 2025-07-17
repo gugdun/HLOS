@@ -23,6 +23,40 @@ typedef struct xen_page {
 static xen_page_t *xen_pages = (xen_page_t *)NULL;
 static xen_block_t *xen_free_list = (xen_block_t *)NULL;
 
+void *xen_alloc_aligned(size_t size)
+{
+    // Align size to 8 bytes
+    size = (size + 7) & ~7;
+    size_t total = size + sizeof(xen_block_t);
+
+    // Always allocate full 2 MiB pages (or more)
+    size_t pages_needed = (total + PAGE_SIZE_2MB - 1) / PAGE_SIZE_2MB;
+    void *aligned_mem = NULL;
+
+    for (size_t i = 0; i < pages_needed; ++i) {
+        void *page = alloc_page();
+        if (!page) {
+            // Rollback allocated pages
+            for (size_t j = 0; j < i; ++j)
+                free_page((void *)((uintptr_t)aligned_mem + j * PAGE_SIZE_2MB));
+            return NULL;
+        }
+
+        if (i == 0)
+            aligned_mem = page;
+    }
+
+    xen_block_t *block = (xen_block_t *)aligned_mem;
+    block->size = size;
+    block->is_large = true;
+
+#ifdef HLOS_DEBUG
+    tty_printf("[XenAlloc] Allocated aligned block of %u bytes @ 0x%x (aligned to 2MiB)\n",
+               size, (void *)(block + 1));
+#endif
+    return (void *)(block + 1);
+}
+
 void *xen_alloc(size_t size)
 {
     // Align to 8 bytes

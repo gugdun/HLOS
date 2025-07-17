@@ -11,7 +11,7 @@ struct DemoTriangleState demo_triangle_init(void)
     // Try to enable double-buffering
     size_t fb_size = fb_get_size();
     if (fb_size > 0) {
-        void *fb_buffer = xen_alloc(fb_size);
+        void *fb_buffer = xen_alloc_aligned(fb_size);
         if (fb_buffer) {
             fb_init_buffer(fb_buffer);
         } else {
