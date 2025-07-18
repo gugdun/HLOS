@@ -1,6 +1,8 @@
 #ifndef _SEGMENTS_H
 #define _SEGMENTS_H
 
+#include <xencore/arch/x86_64/gdt.h>
+
 #define KERNEL_CS      ((GDT_KERNEL_CODE << 3) | 0)
 #define KERNEL_DS      ((GDT_KERNEL_DATA << 3) | 0)
 #define USER_CS        ((GDT_USER_CODE   << 3) | 3)

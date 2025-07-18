@@ -1,3 +1,4 @@
+#include "xencore/xenmem/mem_entry.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -19,30 +20,31 @@ uint64_t next_virtual_heap_addr = VIRT_HEAP_BASE;
 static uint8_t *early_alloc_buffer = NULL;
 static size_t early_alloc_offset = 0;
 
-static void *early_alloc_page(void) {
-    if (early_alloc_offset + PAGE_SIZE_4KB > ALLOC_BUFFER * PAGE_SIZE_4KB) {
-        tty_printf("[Paging] Early allocation buffer exhausted!\n");
-        while (1) { halt(); }
-    }
-    void *ptr = &early_alloc_buffer[early_alloc_offset];
-    early_alloc_offset += PAGE_SIZE_4KB;
-    return (void *)ALIGN_UP_4K((uint64_t)ptr);
-}
+static uint64_t *get_or_create_table(uint64_t *parent, size_t index, uint64_t flags)
+{
+    uint64_t entry = parent[index];
 
-static uint64_t *get_or_create_table(uint64_t *parent, size_t index, uint64_t flags) {
-    if (!(parent[index] & PAGE_PRESENT)) {
+    if (!(entry & PAGE_PRESENT)) {
         uint64_t *new_table = early_alloc_page();
         for (int i = 0; i < 512; ++i) new_table[i] = 0;
-        parent[index] = ((uint64_t)new_table) | (flags & (PAGE_RW | PAGE_USER)) | PAGE_PRESENT;
+        entry = ((uint64_t)new_table) | PAGE_PRESENT;
+        if (flags & PAGE_RW)   entry |= PAGE_RW;
+        if (flags & PAGE_USER) entry |= PAGE_USER;
+    } else {
+        if (flags & PAGE_USER) entry |= PAGE_USER;   // TEMP: promote
+        if (flags & PAGE_RW)   entry |= PAGE_RW;     // TEMP: promote
     }
-    return (uint64_t *)(parent[index] & ~0xFFFULL);
+
+    parent[index] = entry;
+    return (uint64_t *)(entry & ~0xFFFULL);
 }
 
 // Map single 4K page
-static void map_page_4k(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags) {
+static void map_page_4k(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags)
+{
 #ifdef HLOS_DEBUG
     if ((virt & (PAGE_SIZE_4KB - 1)) || (phys & (PAGE_SIZE_4KB - 1))) {
-        tty_printf("[Paging] WARN: 4K map unaligned v=%p p=%p\n", (void*)virt, (void*)phys);
+        tty_printf("[Paging] WARN: 4K map unaligned v=0x%x p=0x%x\n", (void*)virt, (void*)phys);
     }
 #endif
     size_t pml4_index = (virt >> 39) & 0x1FF;
@@ -58,10 +60,11 @@ static void map_page_4k(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t f
 }
 
 // Map single 2M page
-static void map_page_2mb(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags) {
+static void map_page_2mb(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags)
+{
 #ifdef HLOS_DEBUG
     if ((virt & (PAGE_SIZE_2MB - 1)) || (phys & (PAGE_SIZE_2MB - 1))) {
-        tty_printf("[Paging] WARN: 2M map unaligned v=%p p=%p\n", (void*)virt, (void*)phys);
+        tty_printf("[Paging] WARN: 2M map unaligned v=0x%x p=0x%x\n", (void*)virt, (void*)phys);
     }
 #endif
     size_t pml4_index = (virt >> 39) & 0x1FF;
@@ -74,8 +77,64 @@ static void map_page_2mb(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t 
     pd[pd_index] = phys | (flags | PAGE_PS) | PAGE_PRESENT;
 }
 
+uint64_t virt_to_phys(uint64_t virt)
+{
+    uint64_t virt_addr = (uint64_t)virt;
+    size_t pml4_index = (virt_addr >> 39) & 0x1FF;
+    size_t pdpt_index = (virt_addr >> 30) & 0x1FF;
+    size_t pd_index   = (virt_addr >> 21) & 0x1FF;
+    size_t pt_index   = (virt_addr >> 12) & 0x1FF;
+
+    if (!(kernel_pml4[pml4_index] & PAGE_PRESENT)) return 0;
+
+    uint64_t *pdpt = (uint64_t *)(kernel_pml4[pml4_index] & ~0xFFFULL);
+    if (!(pdpt[pdpt_index] & PAGE_PRESENT)) return 0;
+
+    uint64_t *pd = (uint64_t *)(pdpt[pdpt_index] & ~0xFFFULL);
+    if (!(pd[pd_index] & PAGE_PRESENT)) return 0;
+
+    uint64_t *pt = (uint64_t *)(pd[pd_index] & ~0xFFFULL);
+    if (!(pt[pt_index] & PAGE_PRESENT)) return 0;
+
+    return (uint64_t)(pt[pt_index] & ~0xFFFULL);
+}
+
+void *early_alloc_page(void)
+{
+    if (early_alloc_offset + PAGE_SIZE_4KB > ALLOC_BUFFER * PAGE_SIZE_4KB){
+        tty_printf("[Paging] Early allocation buffer exhausted!\n");
+        while (1) { halt(); }
+    }
+    void *ptr = &early_alloc_buffer[early_alloc_offset];
+    early_alloc_offset += PAGE_SIZE_4KB;
+    return (void *)ALIGN_UP_4K((uint64_t)ptr);
+}
+
+void load_pml4(uint64_t *pml4)
+{
+    __asm__ volatile("mov %0, %%cr3" : : "r"(pml4) : "memory");
+}
+
+uint64_t *create_user_pml4(void)
+{
+    // allocate a new PML4 for user space
+    uint64_t *user_pml4 = early_alloc_page();
+    for (int i = 0; i < 512; i++) {
+        user_pml4[i] = 0;
+    }
+
+    for (int i = 0; i < 512; i++) {
+        if (kernel_pml4[i] & 0x1) { // Present
+            user_pml4[i] = kernel_pml4[i];
+        }
+    }
+
+    return user_pml4;
+}
+
 // Hybrid mapper: uses 2M pages where possible, 4K for leftovers
-static void map_range(uint64_t *pml4, uint64_t virt_start, uint64_t phys_start, uint64_t size, uint64_t flags) {
+void map_range(uint64_t *pml4, uint64_t virt_start, uint64_t phys_start, uint64_t size, uint64_t flags)
+{
     uint64_t virt = virt_start;
     uint64_t phys = phys_start;
     uint64_t end  = phys_start + size;
@@ -95,7 +154,13 @@ static void map_range(uint64_t *pml4, uint64_t virt_start, uint64_t phys_start, 
     }
 }
 
-void map_identity(struct MemoryMapEntry *entry) {
+void map_user_segment(uint64_t *user_pml4, uint64_t virt, uint64_t phys, uint64_t size)
+{
+    map_range(user_pml4, virt, phys, size, PAGE_RW | PAGE_USER);
+}
+
+void map_identity(struct MemoryMapEntry *entry)
+{
     uint64_t phys_start = entry->physical_start;
     uint64_t size_bytes = entry->size_pages * PAGE_SIZE_4KB;
 
@@ -108,7 +173,8 @@ void map_identity(struct MemoryMapEntry *entry) {
 #endif
 }
 
-size_t map_virtual(struct MemoryMapEntry *entry) {
+size_t map_virtual(struct MemoryMapEntry *entry)
+{
     uint64_t phys_start = entry->physical_start;
     uint64_t virt_start = entry->virtual_start;
     uint64_t size_bytes = entry->size_pages * PAGE_SIZE_4KB;
@@ -145,6 +211,17 @@ void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_si
 
     early_alloc_buffer = (uint8_t *)alloc_start;
     early_alloc_offset = 0;
+
+    // Identity map early allocation buffer
+    struct MemoryMapEntry alloc_entry = {
+        .type = ConventionalMemory,
+        .pad = 0,
+        .physical_start = alloc_start,
+        .virtual_start = alloc_start,
+        .size_pages = ALLOC_BUFFER,
+        .attribute = 0
+    };
+    map_identity(&alloc_entry);
 
     // Identity map framebuffer
     size_t fb_pages = (fb_size / PAGE_SIZE_4KB) + 1;

@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include <xencore/exec/xenloader.h>
+#include <xencore/hazardous/xenloader.h>
 #include <xencore/xenmem/xenalloc.h>
 #include <xencore/xenio/tty.h>
 

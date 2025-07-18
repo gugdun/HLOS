@@ -26,7 +26,7 @@ LDFLAGS := -shared -Bsymbolic -z noexecstack $(LIBRARY) -T$(GNU_EFI)/gnuefi/elf_
 
 ANOMALOUS_SRC	:= $(wildcard anomalous/*.c)
 ANOMALOUS_OBJ	:= $(patsubst anomalous/%.c, obj/anomalous/%.o, $(ANOMALOUS_SRC))
-XENCORE_SRC		:= $(wildcard xencore/*.c xencore/gman/*.c xencore/exec/*.c xencore/xenlib/*.c xencore/xenmem/*.c xencore/xenio/*.c xencore/graphics/*.c xencore/timer/*.c xencore/xenfs/*.c xencore/arch/$(ARCH)/*.c)
+XENCORE_SRC		:= $(wildcard xencore/*.c xencore/gman/*.c xencore/hazardous/*.c xencore/xenlib/*.c xencore/xenmem/*.c xencore/xenio/*.c xencore/graphics/*.c xencore/timer/*.c xencore/xenfs/*.c xencore/arch/$(ARCH)/*.c)
 XENCORE_OBJ		:= $(patsubst xencore/%.c, obj/xencore/%.o, $(XENCORE_SRC))
 DEMO_SRC		:= $(wildcard demo/*.c)
 DEMO_OBJ		:= $(patsubst demo/%.c, obj/demo/%.o, $(DEMO_SRC))
@@ -57,13 +57,13 @@ obj/xencore/arch/x86_64/isrs.o: xencore/arch/x86_64/isrs.c
 obj/xencore/%.o: xencore/%.c
 	@mkdir -p obj/xencore
 	@mkdir -p obj/xencore/gman
-	@mkdir -p obj/xencore/exec
 	@mkdir -p obj/xencore/xenmem
 	@mkdir -p obj/xencore/xenlib
 	@mkdir -p obj/xencore/xenio
 	@mkdir -p obj/xencore/xenfs
 	@mkdir -p obj/xencore/timer
 	@mkdir -p obj/xencore/graphics
+	@mkdir -p obj/xencore/hazardous
 	@mkdir -p obj/xencore/arch/$(ARCH)
 	@echo "Compiling $<..."
 	@$(CC) $(CFLAGS) -c $< -o $@

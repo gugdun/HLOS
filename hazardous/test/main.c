@@ -1,1 +1,3 @@
-void _start() {}
+void _start() {
+    while (1) {};
+}

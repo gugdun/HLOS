@@ -24,8 +24,14 @@ struct MemoryMapParams {
     size_t descriptor_size;
 };
 
-void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_size);
+uint64_t virt_to_phys(uint64_t virt);
+void *early_alloc_page(void);
+void load_pml4(uint64_t *pml4);
+uint64_t *create_user_pml4(void);
+void map_range(uint64_t *pml4, uint64_t virt_start, uint64_t phys_start, uint64_t size, uint64_t flags);
+void map_user_segment(uint64_t *user_pml4, uint64_t virt, uint64_t phys, uint64_t size);
 void map_identity(struct MemoryMapEntry *entry);
 size_t map_virtual(struct MemoryMapEntry *entry);
+void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_size);
 
 #endif
