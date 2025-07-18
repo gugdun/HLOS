@@ -1,4 +1,4 @@
-CFLAGS	:= -static -O2 -nostdlib -Ttext=0x7F0000000000
+CFLAGS	:= -O2 -nostdlib -mcmodel=large
 SOURCES	:= $(wildcard *.c)
 
 all:

@@ -19,10 +19,19 @@ OBJCOPY	:= $(ARCH)-w64-mingw32-objcopy
 
 DEBUG	:= -DHLOS_DEBUG
 DEFINES	:= $(DEBUG) -DARCH_$(ARCH)
+
 INCLUDE := -I$(SYSROOT)/usr/$(ARCH)-hlos/include -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude
 LIBRARY := -L$(SYSROOT)/usr/$(ARCH)-hlos/lib -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
-CFLAGS  := $(DEFINES) $(INCLUDE) -Wall -Wextra -O0 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone
+
+CFLAGS  := $(DEFINES) $(INCLUDE) -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone
 LDFLAGS := -shared -Bsymbolic -z noexecstack $(LIBRARY) -T$(GNU_EFI)/gnuefi/elf_$(ARCH)_efi.lds
+QFLAGS  := \
+	-L $(OVMF) -pflash $(PFLASH) \
+	-cpu $(CPU) -smp $(CORES) -m $(MEMORY) \
+	-serial stdio \
+	-usb -drive if=none,id=usbstick,format=raw,file=out/usb.img \
+	-device usb-ehci,id=ehci \
+	-device usb-storage,bus=ehci.0,drive=usbstick
 
 ANOMALOUS_SRC	:= $(wildcard anomalous/*.c)
 ANOMALOUS_OBJ	:= $(patsubst anomalous/%.c, obj/anomalous/%.o, $(ANOMALOUS_SRC))
@@ -104,12 +113,11 @@ usb: $(EFI_OUTPUT) test_sample
 
 qemu: usb
 	@echo "Starting QEMU..."
-	@qemu-system-$(ARCH) -L $(OVMF) -pflash $(PFLASH) \
-		-cpu $(CPU) -smp $(CORES) -m $(MEMORY) \
-		-serial stdio \
-		-usb -drive if=none,id=usbstick,format=raw,file=out/usb.img \
-		-device usb-ehci,id=ehci \
-		-device usb-storage,bus=ehci.0,drive=usbstick
+	@qemu-system-$(ARCH) $(QFLAGS)
+
+debug: usb
+	@echo "Starting QEMU in debug mode..."
+	@qemu-system-$(ARCH) -s -S $(QFLAGS)
 
 clean:
 	@echo "Cleaning..."

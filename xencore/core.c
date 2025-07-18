@@ -22,6 +22,7 @@
 #include <xencore/arch/x86_64/pic.h>
 #include <xencore/arch/x86_64/pit.h>
 #include <xencore/arch/x86_64/paging.h>
+#include <xencore/arch/x86_64/syscall.h>
 #endif
 
 #include <xencore/common.h>
@@ -49,21 +50,21 @@ void resonance_cascade(struct FramebufferParams fb_params, struct TestSamplePara
     setup_gdt();
     setup_idt();
     setup_paging(&memmap_params, fb_params.base, fb_params.size);
+    setup_syscall();
     remap_pic();
-    setup_pit(100);
+    // setup_pit(100);
     enable_interrupts();
 #endif
 
     xenmap_init();
     vfs_init();
     analyse_test_sample(&sample_params);
+
+    // Test loading and running an ELF file in usermode
     vfs_node_t *elf_file = vfs_lookup("/test_sample/test.elf");
     if (elf_file) {
-        tty_printf("[Kernel] Found ELF file: %s\n", "/test_sample/test.elf");
         Elf64 *elf = load_elf64(elf_file->file.data);
-        tty_printf("[Kernel] Setting up hazardous environment...\n");
         struct HazardousContext *ctx = setup_hazardous_environment(elf);
-        tty_printf("[Kernel] Going to enter hazardous environment...\n");
         enter_hazardous_environment(ctx);
     }
 
