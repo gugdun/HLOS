@@ -15,4 +15,6 @@ struct __attribute__((packed)) TSS {
     uint16_t iopb_offset;
 };
 
+void setup_tss();
+
 #endif

@@ -3,7 +3,17 @@
 
 #include <stdint.h>
 
-#define GDT_ENTRIES 6
+#define GDT_ENTRIES 7   // null + kcode + kdata + ucode + udata + tss_low + tss_high
+
+enum {
+    GDT_NULL = 0,
+    GDT_KERNEL_CODE,
+    GDT_KERNEL_DATA,
+    GDT_USER_CODE,
+    GDT_USER_DATA,
+    GDT_TSS_LOW,
+    GDT_TSS_HIGH
+};
 
 struct __attribute__((packed)) GDTEntry {
     uint16_t limit_low;
@@ -24,7 +34,6 @@ struct __attribute__((packed)) GDTPtr {
     uint64_t base;
 };
 
-void setup_tss();
 void setup_gdt();
 
 #endif

@@ -4,6 +4,7 @@
 #include <xencore/graphics/framebuffer.h>
 #include <xencore/xenio/tty.h>
 #include <xencore/common.h>
+#include <xencore/gman/gman.h>
 
 // ==== Exception Handlers ====
 

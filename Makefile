@@ -10,8 +10,8 @@ OVMF    := /usr/share/OVMF
 PFLASH	:= $(OVMF)/OVMF_CODE_4M.fd
 
 CPU		:= EPYC
-CORES	:= 2
-MEMORY	:= 4096
+CORES	:= 1
+MEMORY	:= 512
 
 CC      := $(SYSROOT)/bin/$(ARCH)-hlos-gcc
 LD		:= $(SYSROOT)/bin/$(ARCH)-hlos-ld
@@ -21,12 +21,12 @@ DEBUG	:= -DHLOS_DEBUG
 DEFINES	:= $(DEBUG) -DARCH_$(ARCH)
 INCLUDE := -I$(SYSROOT)/usr/$(ARCH)-hlos/include -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol -Iinclude
 LIBRARY := -L$(SYSROOT)/usr/$(ARCH)-hlos/lib -L$(GNU_EFI)/$(ARCH)/lib -L$(GNU_EFI)/$(ARCH)/gnuefi
-CFLAGS  := $(DEFINES) $(INCLUDE) -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone
+CFLAGS  := $(DEFINES) $(INCLUDE) -Wall -Wextra -O0 -ffreestanding -fno-stack-protector -fpic -fshort-wchar -mcmodel=large -mno-red-zone
 LDFLAGS := -shared -Bsymbolic -z noexecstack $(LIBRARY) -T$(GNU_EFI)/gnuefi/elf_$(ARCH)_efi.lds
 
 ANOMALOUS_SRC	:= $(wildcard anomalous/*.c)
 ANOMALOUS_OBJ	:= $(patsubst anomalous/%.c, obj/anomalous/%.o, $(ANOMALOUS_SRC))
-XENCORE_SRC		:= $(wildcard xencore/*.c xencore/exec/*.c xencore/xenlib/*.c xencore/xenmem/*.c xencore/xenio/*.c xencore/graphics/*.c xencore/timer/*.c xencore/xenfs/*.c xencore/arch/$(ARCH)/*.c)
+XENCORE_SRC		:= $(wildcard xencore/*.c xencore/gman/*.c xencore/exec/*.c xencore/xenlib/*.c xencore/xenmem/*.c xencore/xenio/*.c xencore/graphics/*.c xencore/timer/*.c xencore/xenfs/*.c xencore/arch/$(ARCH)/*.c)
 XENCORE_OBJ		:= $(patsubst xencore/%.c, obj/xencore/%.o, $(XENCORE_SRC))
 DEMO_SRC		:= $(wildcard demo/*.c)
 DEMO_OBJ		:= $(patsubst demo/%.c, obj/demo/%.o, $(DEMO_SRC))
@@ -56,6 +56,7 @@ obj/xencore/arch/x86_64/isrs.o: xencore/arch/x86_64/isrs.c
 
 obj/xencore/%.o: xencore/%.c
 	@mkdir -p obj/xencore
+	@mkdir -p obj/xencore/gman
 	@mkdir -p obj/xencore/exec
 	@mkdir -p obj/xencore/xenmem
 	@mkdir -p obj/xencore/xenlib
@@ -104,7 +105,7 @@ usb: $(EFI_OUTPUT) test_sample
 qemu: usb
 	@echo "Starting QEMU..."
 	@qemu-system-$(ARCH) -L $(OVMF) -pflash $(PFLASH) \
-		-cpu $(CPU) -enable-kvm -smp $(CORES) -m $(MEMORY) \
+		-cpu $(CPU) -smp $(CORES) -m $(MEMORY) \
 		-serial stdio \
 		-usb -drive if=none,id=usbstick,format=raw,file=out/usb.img \
 		-device usb-ehci,id=ehci \
