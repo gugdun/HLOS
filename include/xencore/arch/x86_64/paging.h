@@ -9,8 +9,7 @@
 #define PAGE_SIZE_4KB   0x1000
 #define PAGE_SIZE_2MB   0x200000
 #define VIRT_HEAP_BASE  0xFFFF800000000000ULL
-#define HEAP_MIN_SIZE   1024    // In 4 KiB pages
-#define ALLOC_BUFFER    1024    // Number of 4KB pages for early allocation
+#define HEAP_MIN_SIZE   512     // In 4 KiB pages
 
 #define PAGE_PRESENT  (1ULL << 0)
 #define PAGE_RW       (1ULL << 1)

@@ -1,8 +1,8 @@
-#include "xencore/xenmem/mem_entry.h"
 #include <stdint.h>
 #include <stddef.h>
 
 #include <xencore/arch/x86_64/paging.h>
+
 #include <xencore/xenio/tty.h>
 #include <xencore/common.h>
 
@@ -18,6 +18,7 @@ __attribute__((aligned(PAGE_SIZE_4KB))) uint64_t kernel_pml4[512];
 uint64_t next_virtual_heap_addr = VIRT_HEAP_BASE;
 
 static uint8_t *early_alloc_buffer = NULL;
+static size_t early_alloc_size = 0;
 static size_t early_alloc_offset = 0;
 
 static uint64_t *get_or_create_table(uint64_t *parent, size_t index, uint64_t flags)
@@ -43,7 +44,7 @@ static uint64_t *get_or_create_table(uint64_t *parent, size_t index, uint64_t fl
 static void map_page_4k(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags)
 {
 #ifdef HLOS_DEBUG
-    if ((virt & (PAGE_SIZE_4KB - 1)) || (phys & (PAGE_SIZE_4KB - 1))) {
+    if ((virt & (uint64_t)(PAGE_SIZE_4KB - 1)) || (phys & (uint64_t)(PAGE_SIZE_4KB - 1))) {
         tty_printf("[Paging] WARN: 4K map unaligned v=0x%x p=0x%x\n", (void*)virt, (void*)phys);
     }
 #endif
@@ -63,7 +64,7 @@ static void map_page_4k(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t f
 static void map_page_2mb(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags)
 {
 #ifdef HLOS_DEBUG
-    if ((virt & (PAGE_SIZE_2MB - 1)) || (phys & (PAGE_SIZE_2MB - 1))) {
+    if ((virt & (uint64_t)(PAGE_SIZE_2MB - 1)) || (phys & (uint64_t)(PAGE_SIZE_2MB - 1))) {
         tty_printf("[Paging] WARN: 2M map unaligned v=0x%x p=0x%x\n", (void*)virt, (void*)phys);
     }
 #endif
@@ -79,29 +80,54 @@ static void map_page_2mb(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t 
 
 uint64_t virt_to_phys(uint64_t virt)
 {
-    uint64_t virt_addr = (uint64_t)virt;
-    size_t pml4_index = (virt_addr >> 39) & 0x1FF;
-    size_t pdpt_index = (virt_addr >> 30) & 0x1FF;
-    size_t pd_index   = (virt_addr >> 21) & 0x1FF;
-    size_t pt_index   = (virt_addr >> 12) & 0x1FF;
+    const uint64_t VA = virt;
 
-    if (!(kernel_pml4[pml4_index] & PAGE_PRESENT)) return 0;
+    size_t pml4_index = (VA >> 39) & 0x1FF;
+    size_t pdpt_index = (VA >> 30) & 0x1FF;
+    size_t pd_index   = (VA >> 21) & 0x1FF;
+    size_t pt_index   = (VA >> 12) & 0x1FF;
 
-    uint64_t *pdpt = (uint64_t *)(kernel_pml4[pml4_index] & ~0xFFFULL);
-    if (!(pdpt[pdpt_index] & PAGE_PRESENT)) return 0;
+    /* --- PML4 --- */
+    uint64_t pml4e = kernel_pml4[pml4_index];
+    if (!(pml4e & PAGE_PRESENT)) return 0;
 
-    uint64_t *pd = (uint64_t *)(pdpt[pdpt_index] & ~0xFFFULL);
-    if (!(pd[pd_index] & PAGE_PRESENT)) return 0;
+    uint64_t *pdpt = (uint64_t *)(pml4e & ~0xFFFULL);
 
-    uint64_t *pt = (uint64_t *)(pd[pd_index] & ~0xFFFULL);
-    if (!(pt[pt_index] & PAGE_PRESENT)) return 0;
+    /* --- PDPT --- */
+    uint64_t pdpte = pdpt[pdpt_index];
+    if (!(pdpte & PAGE_PRESENT)) return 0;
 
-    return (uint64_t)(pt[pt_index] & ~0xFFFULL);
+    // if (pdpte & PAGE_PS) {
+    //     /* 1GiB page */
+    //     uint64_t phys_base = pdpte & ~((uint64_t)PAGE_SIZE_1GB - 1);
+    //     return phys_base + (VA & (PAGE_SIZE_1GB - 1));
+    // }
+
+    uint64_t *pd = (uint64_t *)(pdpte & ~0xFFFULL);
+
+    /* --- PD --- */
+    uint64_t pde = pd[pd_index];
+    if (!(pde & PAGE_PRESENT)) return 0;
+
+    if (pde & PAGE_PS) {
+        /* 2MiB page */
+        uint64_t phys_base = pde & ~((uint64_t)PAGE_SIZE_2MB - 1);
+        return phys_base + (VA & (PAGE_SIZE_2MB - 1));
+    }
+
+    uint64_t *pt = (uint64_t *)(pde & ~0xFFFULL);
+
+    /* --- PT --- */
+    uint64_t pte = pt[pt_index];
+    if (!(pte & PAGE_PRESENT)) return 0;
+
+    uint64_t phys_base = pte & ~((uint64_t)PAGE_SIZE_4KB - 1);
+    return phys_base + (VA & (PAGE_SIZE_4KB - 1));
 }
 
 void *early_alloc_page(void)
 {
-    if (early_alloc_offset + PAGE_SIZE_4KB > ALLOC_BUFFER * PAGE_SIZE_4KB){
+    if (early_alloc_offset + PAGE_SIZE_4KB > early_alloc_size) {
         tty_printf("[Paging] Early allocation buffer exhausted!\n");
         while (1) { halt(); }
     }
@@ -139,18 +165,19 @@ void map_range(uint64_t *pml4, uint64_t virt_start, uint64_t phys_start, uint64_
     uint64_t phys = phys_start;
     uint64_t end  = phys_start + size;
 
-    while (phys + PAGE_SIZE_2MB <= end &&
-           !(virt & (PAGE_SIZE_2MB - 1)) &&
-           !(phys & (PAGE_SIZE_2MB - 1))) {
-        map_page_2mb(pml4, virt, phys, flags);
-        virt += PAGE_SIZE_2MB;
-        phys += PAGE_SIZE_2MB;
-    }
-
     while (phys < end) {
-        map_page_4k(pml4, virt, phys, flags);
-        virt += PAGE_SIZE_4KB;
-        phys += PAGE_SIZE_4KB;
+        // If phys is aligned to 2MB, use 2MB mapping
+        if (!(phys & (uint64_t)(PAGE_SIZE_2MB - 1)) && !(virt & (uint64_t)(PAGE_SIZE_2MB - 1)) && (end - phys) >= PAGE_SIZE_2MB) {
+            map_page_2mb(pml4, virt, phys, flags);
+            virt += PAGE_SIZE_2MB;
+            phys += PAGE_SIZE_2MB;
+        }
+        // Otherwise, use 4K mapping
+        else {
+            map_page_4k(pml4, virt, phys, flags);
+            virt += PAGE_SIZE_4KB;
+            phys += PAGE_SIZE_4KB;
+        }
     }
 }
 
@@ -191,25 +218,37 @@ size_t map_virtual(struct MemoryMapEntry *entry)
 
 void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_size)
 {
-    // Find memory for early allocator
-    size_t alloc_size = ALLOC_BUFFER * PAGE_SIZE_4KB;
-    size_t alloc_start = 0;
+    // Find conventional memory size
+    size_t conventional_memory_size = 0;
     for (size_t i = 0; i < params->memory_map_size; i += params->descriptor_size) {
         struct MemoryMapEntry *entry = (struct MemoryMapEntry *)((uint8_t *)params->memory_map + i);
-        if (entry->type == ConventionalMemory && entry->size_pages * PAGE_SIZE_4KB >= alloc_size) {
+        if (entry->type == ConventionalMemory) {
+            conventional_memory_size += entry->size_pages * PAGE_SIZE_4KB;
+        }
+    }
+
+    // Find memory for early allocator
+    size_t alloc_start = 0;
+    size_t alloc_size = conventional_memory_size / 2048;
+    for (size_t i = 0; i < params->memory_map_size; i += params->descriptor_size) {
+        struct MemoryMapEntry *entry = (struct MemoryMapEntry *)((uint8_t *)params->memory_map + i);
+        if (entry->type == ConventionalMemory && entry->size_pages * PAGE_SIZE_4KB >= alloc_size && !(entry->physical_start & (uint64_t)(PAGE_SIZE_2MB - 1))) {
             alloc_start = ALIGN_UP_4K(entry->physical_start);
             entry->physical_start += alloc_size;
             entry->size_pages -= alloc_size / PAGE_SIZE_4KB;
             break;
         }
     }
-
+    
     if (alloc_start == 0) {
         tty_printf("[Paging] No suitable memory found for early allocation buffer!\n");
         while (1) { halt(); }
     }
 
+    tty_printf("[Paging] Allocated %u 4KiB pages for early allocator\n", alloc_size / PAGE_SIZE_4KB);
+
     early_alloc_buffer = (uint8_t *)alloc_start;
+    early_alloc_size = alloc_size;
     early_alloc_offset = 0;
 
     // Identity map early allocation buffer
@@ -218,7 +257,7 @@ void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_si
         .pad = 0,
         .physical_start = alloc_start,
         .virtual_start = alloc_start,
-        .size_pages = ALLOC_BUFFER,
+        .size_pages = early_alloc_size / PAGE_SIZE_4KB,
         .attribute = 0
     };
     map_identity(&alloc_entry);
@@ -249,7 +288,10 @@ void setup_paging(struct MemoryMapParams *params, uint64_t fb_base, size_t fb_si
                 break;
 
             case ConventionalMemory:
-                if (entry->size_pages >= HEAP_MIN_SIZE) {
+                entry->virtual_start = ALIGN_UP_2M(entry->physical_start);
+                entry->size_pages = ALIGN_DOWN_2M(entry->size_pages * PAGE_SIZE_4KB) / PAGE_SIZE_4KB;
+                if (entry->virtual_start - entry->physical_start < entry->size_pages * PAGE_SIZE_4KB && entry->size_pages >= HEAP_MIN_SIZE) {
+                    entry->physical_start = entry->virtual_start;
                     entry->virtual_start = next_virtual_heap_addr;
                     next_virtual_heap_addr += map_virtual(entry);
                 }
