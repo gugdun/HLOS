@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 static uint8_t console_font_8x8[] = {
+    8, /* glyph width */
+    8, /* glyph height */
 
     /*
      * code=0, hex=0x00, ascii="^@"

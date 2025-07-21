@@ -2,13 +2,12 @@
 #include <math.h>
 
 #include <xencore/graphics/framebuffer.h>
-#include <xencore/graphics/fonts/8x8.h>
+#include <xencore/graphics/fonts/8x14.h>
 #include <xencore/xenio/serial.h>
 #include <xencore/xenio/tty.h>
 
 fb_color_t *fb_base   = (fb_color_t *)NULL;
 fb_color_t *fb_buffer = (fb_color_t *)NULL;
-uint8_t    *fb_font   = (uint8_t *)NULL;
 size_t      fb_size   = 0;
 uint32_t    fb_width  = 0;
 uint32_t    fb_height = 0;
@@ -24,7 +23,6 @@ static inline void swap_u32(uint32_t *a, uint32_t *b) {
 
 void fb_init(struct FramebufferParams *params) {
     fb_base    = (uint32_t *)params->base;
-    fb_font    = (uint8_t *)console_font_8x8;
     fb_size    = params->size;
     fb_width   = params->width;
     fb_height  = params->height;
@@ -47,7 +45,7 @@ void fb_init(struct FramebufferParams *params) {
     tty_init(
         fb_color_rgb(TEXT_COLOR_R, TEXT_COLOR_G, TEXT_COLOR_B),
         fb_color_rgb(CLEAR_COLOR_R, CLEAR_COLOR_G, CLEAR_COLOR_B),
-        console_font_8x8
+        console_font_8x14
     );
 
     if (fb_base == NULL || fb_size == 0) {
@@ -302,11 +300,13 @@ void fb_triangle_fill(fb_color_t color, uint32_t x0, uint32_t y0, uint32_t x1, u
 }
 
 void fb_draw_char(fb_color_t color, uint32_t x, uint32_t y, char c, const uint8_t *font) {
-    const uint8_t *glyph = &font[(uint8_t)c * 8];
-    for (uint32_t row = 0; row < 8; ++row) {
+    const uint8_t font_w = font[0];
+    const uint8_t font_h = font[1];
+    const uint8_t *glyph = &font[2 + (uint8_t)c * font_h];
+    for (uint32_t row = 0; row < font_h; ++row) {
         uint8_t bits = glyph[row];
-        for (uint32_t col = 0; col < 8; ++col) {
-            if (bits & (1 << (7 - col))) {
+        for (uint32_t col = 0; col < font_w; ++col) {
+            if (bits & (1 << (font_w - col - 1))) {
                 fb_set(color, x + col, y + row);
             }
         }

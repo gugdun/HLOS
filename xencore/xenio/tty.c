@@ -1,11 +1,12 @@
 #include <stdarg.h>
 
 #include <xencore/graphics/framebuffer.h>
-#include <xencore/graphics/fonts/8x8.h>
+#include <xencore/graphics/fonts/8x14.h>
 #include <xencore/xenio/serial.h>
 #include <xencore/xenio/tty.h>
 
 static uint32_t tty_x = 0, tty_y = 0;
+static uint32_t tty_cols = 0, tty_rows = 0;
 static fb_color_t tty_fg = 0xFFFFFFFF, tty_bg = 0xFF000000;
 static const uint8_t *tty_font = NULL;
 
@@ -14,7 +15,9 @@ void tty_init(fb_color_t fg, fb_color_t bg, const uint8_t *font) {
     tty_y = 0;
     tty_fg = fg;
     tty_bg = bg;
-    tty_font = font ? font : (const uint8_t*)console_font_8x8;
+    tty_font = font ? font : (const uint8_t*)console_font_8x14;
+    tty_cols = fb_get_width() / font[0];
+    tty_rows = fb_get_height() / font[1];
     tty_printf("[TTY] Initialized with foreground color: 0x%x, background color: 0x%x\n", tty_fg, tty_bg);
 }
 
@@ -31,8 +34,26 @@ void tty_setpos(uint32_t x, uint32_t y) {
 uint32_t tty_getx(void) { return tty_x; }
 uint32_t tty_gety(void) { return tty_y; }
 
+void tty_reset()
+{
+    tty_x = 0;
+    tty_y = 0;
+    fb_clear(tty_bg);
+}
+
+void tty_setfont(const uint8_t *font)
+{
+    if (font != NULL) {
+        tty_font = font;
+        tty_cols = fb_get_width() / font[0];
+        tty_rows = fb_get_height() / font[1];
+        tty_reset();
+    }
+}
+
 static void tty_scroll(void) {
-    fb_scroll_up(8, tty_bg);
+    const uint8_t font_height = tty_font[1];
+    fb_scroll_up(font_height, tty_bg);
     if (tty_y > 0) tty_y--;
 }
 
@@ -40,31 +61,33 @@ void tty_putc(char c) {
     serial_print_char(c);
     if (!fb_is_initialized()) return;
     
-    if (!tty_font) tty_font = (const uint8_t*)console_font_8x8;
+    if (!tty_font) tty_font = (const uint8_t*)console_font_8x14;
+    const uint8_t font_w = tty_font[0];
+    const uint8_t font_h = tty_font[1];
     switch (c) {
         case '\n':
             tty_x = 0;
             tty_y++;
-            if (tty_y >= TTY_ROWS) { tty_scroll(); tty_y = TTY_ROWS - 1; }
+            if (tty_y >= tty_rows) { tty_scroll(); tty_y = tty_rows - 1; }
             break;
         case '\r':
             tty_x = 0;
             break;
         case '\t':
             tty_x = (tty_x + 4) & ~(4 - 1);
-            if (tty_x >= TTY_COLS) { tty_x = 0; tty_y++; }
-            if (tty_y >= TTY_ROWS) { tty_scroll(); tty_y = TTY_ROWS - 1; }
+            if (tty_x >= tty_cols) { tty_x = 0; tty_y++; }
+            if (tty_y >= tty_rows) { tty_scroll(); tty_y = tty_rows - 1; }
             break;
         case '\b':
             if (tty_x > 0) tty_x--;
-            else if (tty_y > 0) { tty_y--; tty_x = TTY_COLS - 1; }
-            fb_draw_char(tty_bg, tty_x * 8, tty_y * 8, ' ', tty_font);
+            else if (tty_y > 0) { tty_y--; tty_x = tty_cols - 1; }
+            fb_draw_char(tty_bg, tty_x * font_w, tty_y * font_h, ' ', tty_font);
             break;
         default:
-            fb_draw_char(tty_fg, tty_x * 8, tty_y * 8, c, tty_font);
+            fb_draw_char(tty_fg, tty_x * font_w, tty_y * font_h, c, tty_font);
             tty_x++;
-            if (tty_x >= TTY_COLS) { tty_x = 0; tty_y++; }
-            if (tty_y >= TTY_ROWS) { tty_scroll(); tty_y = TTY_ROWS - 1; }
+            if (tty_x >= tty_cols) { tty_x = 0; tty_y++; }
+            if (tty_y >= tty_rows) { tty_scroll(); tty_y = tty_rows - 1; }
             break;
     }
 }
