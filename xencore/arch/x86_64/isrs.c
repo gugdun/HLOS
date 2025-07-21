@@ -46,11 +46,23 @@ __attribute__((interrupt)) void isr_double_fault(struct interrupt_frame* frame, 
 
 volatile uint64_t sleep_countdown = 0;
 
+#ifdef HLOS_DEBUG
+volatile uint64_t timer_ticks = 0;
+#endif
+
 __attribute__((interrupt)) void isr_timer(__attribute__((unused)) struct interrupt_frame* frame)
 {
+#ifdef HLOS_DEBUG
+    timer_ticks++;
+    if (timer_ticks % 100 == 0) {
+        tty_printf("[Timer] Ticks: %u\n", timer_ticks);
+    }
+#endif
+
     if (sleep_countdown > 0) {
         sleep_countdown--;
     }
+
     outb(0x20, 0x20); // EOI to PIC
 }
 

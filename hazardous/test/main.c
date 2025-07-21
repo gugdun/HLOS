@@ -33,8 +33,22 @@ void exit(int code) {
     __builtin_unreachable();
 }
 
+const char hello_strings[5][46] = {
+    "Hello, World!\n",
+    "Welcome to Xencore!\n",
+    "This is a test of the syscall interface.\n",
+    "Enjoy your stay in the hazardous environment.\n",
+    "Goodbye!\n"
+};
+
+const size_t hello_lengths[] = {
+    14, 20, 41, 46, 9
+};
+
 void _start() {
-    write(1, "Hello from ELF!\n", 16);
+    for (int i = 0; i < 5; ++i) {
+        write(1, hello_strings[i], hello_lengths[i]);
+    }
     exit(0);
     __builtin_unreachable();
 }

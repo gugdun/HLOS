@@ -16,16 +16,15 @@ static inline void write_tss_descriptor(int idx, struct TSS* tss)
     uint64_t base  = (uint64_t)tss;
     uint32_t limit = sizeof(struct TSS) - 1;
 
-    // Lower (GDTEntry)
-    gdt[idx].limit_low  = limit & 0xFFFF;
-    gdt[idx].base_low   = base & 0xFFFF;
-    gdt[idx].base_mid   = (base >> 16) & 0xFF;
-    gdt[idx].access     = 0x89; // present=1, DPL=0, type=1001b (available 64-bit TSS)
-    gdt[idx].granularity = ((limit >> 16) & 0x0F);
-    gdt[idx].granularity |= 0;  // G=0, AVL=0, L=0, D/B=0 for system segment
-    gdt[idx].base_high  = (base >> 24) & 0xFF;
+    // Lower 64 bits of TSS descriptor
+    gdt[idx].limit_low    = limit & 0xFFFF;
+    gdt[idx].base_low     = base & 0xFFFF;
+    gdt[idx].base_mid     = (base >> 16) & 0xFF;
+    gdt[idx].access       = 0x89; // present=1, type=1001b (64-bit TSS)
+    gdt[idx].granularity  = (limit >> 16) & 0x0F;
+    gdt[idx].base_high    = (base >> 24) & 0xFF;
 
-    // Upper (TSSDescriptorHigh)
+    // Upper 64 bits
     struct TSSDescriptorHigh* high = (struct TSSDescriptorHigh*)&gdt[idx + 1];
     high->base_upper = (base >> 32) & 0xFFFFFFFF;
     high->reserved   = 0;
@@ -40,45 +39,45 @@ void setup_gdt(void)
 
     // ---- Kernel Code (0x08) ----
     gdt[GDT_KERNEL_CODE] = (struct GDTEntry){
-        .limit_low   = 0x0000,
-        .base_low    = 0x0000,
-        .base_mid    = 0x00,
-        .access      = 0x9A,   // present=1, DPL=0, code seg, executable, readable
-        .granularity = 0x20,   // L=1 (64-bit), G=0, D=0
-        .base_high   = 0x00
+        .limit_low   = 0,
+        .base_low    = 0,
+        .base_mid    = 0,
+        .access      = 0x9A,   // Code: present=1, DPL=0, code, readable
+        .granularity = 0x20,   // L=1 (64-bit), D=0, G=0
+        .base_high   = 0
     };
 
     // ---- Kernel Data (0x10) ----
     gdt[GDT_KERNEL_DATA] = (struct GDTEntry){
-        .limit_low   = 0x0000,
-        .base_low    = 0x0000,
-        .base_mid    = 0x00,
-        .access      = 0x92,   // present=1, DPL=0, data seg, writable
-        .granularity = 0x00,   // L=0 для data; D=0; G=0
-        .base_high   = 0x00
+        .limit_low   = 0,
+        .base_low    = 0,
+        .base_mid    = 0,
+        .access      = 0x92,   // Data: present=1, DPL=0, writable
+        .granularity = 0x00,   // No flags needed
+        .base_high   = 0
     };
 
-    // ---- User Code (0x18 base, selector=0x1B) ----
+    // ---- User Code (0x18 base) ----
     gdt[GDT_USER_CODE] = (struct GDTEntry){
-        .limit_low   = 0x0000,
-        .base_low    = 0x0000,
-        .base_mid    = 0x00,
-        .access      = 0xFA,   // present=1, DPL=3, code, executable, readable
+        .limit_low   = 0,
+        .base_low    = 0,
+        .base_mid    = 0,
+        .access      = 0xFA,   // User code: present=1, DPL=3
         .granularity = 0x20,   // L=1
-        .base_high   = 0x00
+        .base_high   = 0
     };
 
-    // ---- User Data (0x20 base, selector=0x23) ----
+    // ---- User Data (0x20 base) ----
     gdt[GDT_USER_DATA] = (struct GDTEntry){
-        .limit_low   = 0x0000,
-        .base_low    = 0x0000,
-        .base_mid    = 0x00,
-        .access      = 0xF2,   // present=1, DPL=3, data, writable
+        .limit_low   = 0,
+        .base_low    = 0,
+        .base_mid    = 0,
+        .access      = 0xF2,   // User data: present=1, DPL=3, writable
         .granularity = 0x00,
-        .base_high   = 0x00
+        .base_high   = 0
     };
 
-    // ---- TSS descriptor ----
+    // ---- TSS descriptor (0x28) ----
     write_tss_descriptor(GDT_TSS_LOW, &tss);
 
     // ---- GDT pointer ----
@@ -110,5 +109,8 @@ void setup_gdt(void)
     // ---- Load TSS ----
     __asm__ volatile ("ltr %w0" : : "r"((uint16_t)TSS_SELECTOR));
 
-    tty_printf("[GDT] Initialized. Base=0x%x, limit=%u\n", (uint64_t)&gdt, gdt_ptr.limit);
+    tty_printf(
+        "[GDT] Initialized. Base=0x%x, limit=%u\n",
+        (uint64_t)&gdt, gdt_ptr.limit
+    );
 }

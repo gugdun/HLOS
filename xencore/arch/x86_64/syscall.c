@@ -1,9 +1,14 @@
+#include "xencore/xenmem/mem_entry.h"
+#include <string.h>
+
 #include <xencore/arch/x86_64/syscall.h>
 #include <xencore/arch/x86_64/paging.h>
 #include <xencore/arch/x86_64/segments.h>
 #include <xencore/arch/x86_64/msr.h>
 
+#include <xencore/xenmem/xenalloc.h>
 #include <xencore/xenio/tty.h>
+#include <xencore/common.h>
 
 #define MSR_EFER    0xC0000080
 #define MSR_STAR    0xC0000081
@@ -11,7 +16,7 @@
 #define MSR_FMASK   0xC0000084
 #define EFER_SCE    (1 << 0)    // Enable SYSCALL/SYSRET
 
-extern uint64_t kernel_stack_top;
+uint64_t syscall_stack_top = 0;
 
 uint64_t syscall_dispatch(
     uint64_t num,
@@ -49,90 +54,118 @@ uint64_t syscall_dispatch(
     }
 }
 
-__attribute__((naked)) void syscall_entry(void) {
+__attribute__((naked)) void syscall_entry(void)
+{
     __asm__ volatile (
-        /* INPUT (SYSCALL, 64-bit):
-         *  rax = num
-         *  rdi = a1
-         *  rsi = a2
-         *  rdx = a3
-         *  r10 = a4
-         *  r8  = a5
-         *  r9  = a6
-         *  rcx = user RIP
-         *  r11 = user RFLAGS
-         *  rsp = user RSP
-         */
+        "cli\n\t"
 
-        /* Save user_rsp */
-        "mov %rsp, %r12\n\t"
+        "mov   %rsp, %r15\n\t"                /* r15 = user_rsp */
 
-        /* Switch to kernel_stack_top (value, not address) */
-        "lea kernel_stack_top(%rip), %rsp\n\t"
-        "mov (%rsp), %rsp\n\t"
+        "mov   syscall_stack_top(%rip), %rsp\n\t"
+        "sub   $144, %rsp\n\t"
 
-        /* user-state frame: 3 * 8 */
-        "sub $24, %rsp\n\t"
-        "mov %r11, 0(%rsp)\n\t"  /* user_rflags */
-        "mov %rcx, 8(%rsp)\n\t"  /* user_rip */
-        "mov %r12,16(%rsp)\n\t"  /* user_rsp */
+        /* Save user state */
+        "mov   %r11,   0(%rsp)\n\t"
+        "mov   %rcx,   8(%rsp)\n\t"
+        "mov   %r15,  16(%rsp)\n\t"           /* user_rsp    */
+        "mov   %rax,  24(%rsp)\n\t"           /* user_rax (num) */
+        "mov   %rbx,  32(%rsp)\n\t"
+        "mov   %rcx,  40(%rsp)\n\t"           /* debug */
+        "mov   %rdx,  48(%rsp)\n\t"           /* a3 */
+        "mov   %rsi,  56(%rsp)\n\t"           /* a2 */
+        "mov   %rdi,  64(%rsp)\n\t"           /* a1 */
+        "mov   %rbp,  72(%rsp)\n\t"
+        "mov   %r8,   80(%rsp)\n\t"           /* a5 */
+        "mov   %r9,   88(%rsp)\n\t"           /* a6 */
+        "mov   %r10,  96(%rsp)\n\t"           /* a4 */
+        "mov   %r11, 104(%rsp)\n\t"           /* debug */
+        "mov   %r12, 112(%rsp)\n\t"
+        "mov   %r13, 120(%rsp)\n\t"
+        "mov   %r14, 128(%rsp)\n\t"
+        "mov   %r15, 136(%rsp)\n\t"           /* user_r15 (actually user_rsp) */
 
-        /* Save all syscall-registers to stack (caller-saved): */
-        "push %r9\n\t"           /* [a6] */
-        "push %r8\n\t"           /* [a5] */
-        "push %r10\n\t"          /* [a4] */
-        "push %rdx\n\t"          /* [a3] */
-        "push %rsi\n\t"          /* [a2] */
-        "push %rdi\n\t"          /* [a1] */
-        "push %rax\n\t"          /* [num]   rsp -> num */
+        /* Build C call args. */
+        "mov   24(%rsp), %rdi\n\t"            /* num */
+        "mov   64(%rsp), %rsi\n\t"            /* a1 */
+        "mov   56(%rsp), %rdx\n\t"            /* a2 */
+        "mov   48(%rsp), %rcx\n\t"            /* a3 */
+        "mov   96(%rsp), %r8\n\t"             /* a4 */
+        "mov   80(%rsp), %r9\n\t"             /* a5 */
+        "mov   88(%rsp), %rax\n\t"            /* a6 tmp */
+        "push  %rax\n\t"                      /* 7th arg */
 
-        /* Load ABI-compatible arguments for C:
-           rdi=num, rsi=a1, rdx=a2, rcx=a3, r8=a4, r9=a5
-           a6 = *(rsp + 48) → put on stack before call
-        */
-        "mov 0(%rsp),  %rdi\n\t"   /* num */
-        "mov 8(%rsp),  %rsi\n\t"   /* a1 */
-        "mov 16(%rsp), %rdx\n\t"   /* a2 */
-        "mov 24(%rsp), %rcx\n\t"   /* a3 */
-        "mov 32(%rsp), %r8\n\t"    /* a4 */
-        "mov 40(%rsp), %r9\n\t"    /* a5 */
-        "mov 48(%rsp), %rax\n\t"   /* a6 -> rax temp */
-        "push %rax\n\t"            /* push a6 (7-th arg) */
+        "sti\n\t"
+        "call  syscall_dispatch\n\t"
+        "cli\n\t"
 
-        "call syscall_dispatch\n\t"
+        "add   $8, %rsp\n\t"                  /* drop a6 */
 
-        "add $8, %rsp\n\t"         /* drop a6 arg */
+        /* Restore user GPRs (except %rax/%rcx/%r11). */
+        "mov   32(%rsp), %rbx\n\t"
+        "mov   72(%rsp), %rbp\n\t"
+        "mov  112(%rsp), %r12\n\t"
+        "mov  120(%rsp), %r13\n\t"
+        "mov  128(%rsp), %r14\n\t"
+        "mov  136(%rsp), %r15\n\t"
+        "mov   64(%rsp), %rdi\n\t"
+        "mov   56(%rsp), %rsi\n\t"            /* restore a2 */
+        "mov   48(%rsp), %rdx\n\t"
+        "mov   96(%rsp), %r10\n\t"
+        "mov   80(%rsp), %r8\n\t"
+        "mov   88(%rsp), %r9\n\t"
 
-        /* Remove saved registers num..a6 (7*8) */
-        "add $56, %rsp\n\t"
+        /* Load user_rflags & user_rip. */
+        "mov    0(%rsp), %r11\n\t"
+        "mov    8(%rsp), %rcx\n\t"
 
-        /* Restore user-state and return */
-        "mov 0(%rsp), %r11\n\t"    /* user_rflags */
-        "mov 8(%rsp), %rcx\n\t"    /* user_rip */
-        "mov 16(%rsp), %rsp\n\t"   /* user_rsp */
+        /* Switch directly back to the saved user stack */
+        "mov   16(%rsp), %rsp\n\t"
+
         "sysretq\n\t"
     );
 }
 
 void setup_syscall(void)
 {
+    // Allocate syscall stack
+    syscall_stack_top = (uint64_t)xen_alloc_aligned(SYSCALL_STACK_SIZE);
+    if (!syscall_stack_top) {
+        tty_printf("[Syscall] Failed to allocate syscall stack\n");
+        while (1) halt();
+    }
+    memset((void *)syscall_stack_top, 0, SYSCALL_STACK_SIZE);
+
+    // Map syscall stack
+    syscall_stack_top = virt_to_phys(syscall_stack_top);
+    struct MemoryMapEntry entry = {
+        .type = KernelData,
+        .pad = 0,
+        .physical_start = syscall_stack_top,
+        .virtual_start = syscall_stack_top,
+        .size_pages = SYSCALL_STACK_SIZE / PAGE_SIZE_4KB,
+        .attribute = PAGE_RW | PAGE_PRESENT
+    };
+    map_identity(&entry);
+    syscall_stack_top += SYSCALL_STACK_SIZE; // Point to top of stack
+
     // Enable syscall in EFER
     uint64_t efer = rdmsr(MSR_EFER);
     efer |= EFER_SCE;
     wrmsr(MSR_EFER, efer);
 
-    // STAR: user CS=0x1B, kernel CS=0x08
-    uint64_t star = ((uint64_t)0x001B << 48) | ((uint64_t)0x0008 << 32);
+    // STAR: syscall/user mode segments
+    uint64_t star = ((uint64_t)USER_CS << 48) | ((uint64_t)KERNEL_CS << 32);
     wrmsr(MSR_STAR, star);
 
     // LSTAR: syscall entry point
     wrmsr(MSR_LSTAR, (uint64_t)syscall_entry);
 
-    // FMASK: clear IF when entering kernel
-    wrmsr(MSR_FMASK, (1 << 9));
+    /* FMASK: clear IF, TF, DF on entry */
+    uint64_t fmask = (1ULL << 9) | (1ULL << 8) | (1ULL << 10);
+    wrmsr(MSR_FMASK, fmask);
 
     tty_printf(
-        "[Syscall] STAR=0x%x LSTAR=0x%x FMASK=0x%x\n",
-        (uint64_t)star, &syscall_entry, (uint64_t)(1ULL << 9)
+        "[Syscall] STAR=0x%x LSTAR=0x%x FMASK=0x%x syscall_stack_top=0x%x\n",
+        (uint64_t)star, &syscall_entry, fmask, syscall_stack_top
     );
 }

@@ -50,15 +50,18 @@ void resonance_cascade(struct FramebufferParams fb_params, struct TestSamplePara
     setup_gdt();
     setup_idt();
     setup_paging(&memmap_params, fb_params.base, fb_params.size);
-    setup_syscall();
     remap_pic();
-    // setup_pit(100);
+    setup_pit(100);
     enable_interrupts();
 #endif
-
+    
     xenmap_init();
     vfs_init();
     analyse_test_sample(&sample_params);
+    
+#ifdef ARCH_x86_64
+    setup_syscall();
+#endif
 
     // Test loading and running an ELF file in usermode
     vfs_node_t *elf_file = vfs_lookup("/test_sample/test.elf");
